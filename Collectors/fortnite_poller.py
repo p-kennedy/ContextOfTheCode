@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 from datetime import datetime
 
@@ -7,6 +8,9 @@ import requests
 
 from config import FORTNITE_ISLAND_CODE, FORTNITE_POLL_INTERVAL_SECONDS
 from uploader_queue import push_metric
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger(__name__)
 
 ISLAND_CODE = FORTNITE_ISLAND_CODE
 BASE_URL = f"https://api.fortnite.com/ecosystem/v1/islands/{ISLAND_CODE}/metrics/minute"
@@ -32,7 +36,7 @@ def get_last_recorded_at() -> datetime | None:
         if results:
             return datetime.fromisoformat(results[0]["recorded_at"])
     except requests.RequestException as exc:
-        print(f"  Could not fetch last recorded_at: {exc}")
+        logger.warning("Could not fetch last recorded_at: %s", exc)
     return None
 
 
@@ -53,9 +57,9 @@ def parse_interval_time(interval: dict) -> datetime:
 def poll_and_queue() -> None:
     last_recorded = get_last_recorded_at()
     if last_recorded is None:
-        print("  No existing fortnite data in DB, will queue all non-null intervals")
+        logger.info("No existing fortnite data in DB, will queue all non-null intervals")
     else:
-        print(f"  Last recorded_at in DB: {last_recorded.isoformat()}")
+        logger.info("Last recorded_at in DB: %s", last_recorded.isoformat())
 
     for endpoint, metric_name in METRICS.items():
         queued = 0
@@ -81,15 +85,15 @@ def poll_and_queue() -> None:
                 push_metric(payload)
                 queued += 1
 
-            print(f"  {metric_name}: queued {queued} new interval(s)")
+            logger.info("%s: queued %d new interval(s)", metric_name, queued)
         except requests.RequestException as exc:
-            print(f"  Failed {metric_name}: {exc}")
+            logger.warning("Failed %s: %s", metric_name, exc)
 
 
 def main() -> None:
-    print(f"Fortnite poller started (island={ISLAND_CODE}, interval={FORTNITE_POLL_INTERVAL_SECONDS}s)")
+    logger.info("Fortnite poller started (island=%s, interval=%ss)", ISLAND_CODE, FORTNITE_POLL_INTERVAL_SECONDS)
     while True:
-        print("Polling Fortnite metrics...")
+        logger.info("Polling Fortnite metrics...")
         poll_and_queue()
         time.sleep(FORTNITE_POLL_INTERVAL_SECONDS)
 

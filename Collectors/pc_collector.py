@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import platform
 import time
 
@@ -7,6 +8,9 @@ import psutil
 
 from config import UPLOAD_INTERVAL_SECONDS
 from uploader_queue import push_metric
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger(__name__)
 
 DEVICE_ID = platform.node()
 
@@ -52,13 +56,13 @@ def collect_metrics() -> list[dict]:
 def queue_metrics(metrics: list[dict]) -> None:
     for metric in metrics:
         push_metric(metric)
-        print(f"  Queued {metric['metric_name']}={metric['value']}")
+        logger.info("Queued %s=%s", metric["metric_name"], metric["value"])
 
 
 def main() -> None:
-    print(f"PC collector started (device_id={DEVICE_ID}, interval={UPLOAD_INTERVAL_SECONDS}s)")
+    logger.info("PC collector started (device_id=%s, interval=%ss)", DEVICE_ID, UPLOAD_INTERVAL_SECONDS)
     while True:
-        print(f"Collecting metrics...")
+        logger.info("Collecting metrics...")
         metrics = collect_metrics()
         queue_metrics(metrics)
         time.sleep(UPLOAD_INTERVAL_SECONDS)
