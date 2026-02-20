@@ -4,11 +4,11 @@ import platform
 import time
 
 import psutil
-import requests
 
-AGGREGATOR_URL = "http://localhost:8001/metrics/"
+from config import UPLOAD_INTERVAL_SECONDS
+from uploader_queue import push_metric
+
 DEVICE_ID = platform.node()
-INTERVAL_SECONDS = 30
 
 
 def collect_metrics() -> list[dict]:
@@ -49,23 +49,19 @@ def collect_metrics() -> list[dict]:
     ]
 
 
-def post_metrics(metrics: list[dict]) -> None:
+def queue_metrics(metrics: list[dict]) -> None:
     for metric in metrics:
-        try:
-            resp = requests.post(AGGREGATOR_URL, json=metric, timeout=5)
-            resp.raise_for_status()
-            print(f"  Posted {metric['metric_name']}={metric['value']}")
-        except requests.RequestException as exc:
-            print(f"  Failed to post {metric['metric_name']}: {exc}")
+        push_metric(metric)
+        print(f"  Queued {metric['metric_name']}={metric['value']}")
 
 
 def main() -> None:
-    print(f"PC collector started (device_id={DEVICE_ID}, interval={INTERVAL_SECONDS}s)")
+    print(f"PC collector started (device_id={DEVICE_ID}, interval={UPLOAD_INTERVAL_SECONDS}s)")
     while True:
         print(f"Collecting metrics...")
         metrics = collect_metrics()
-        post_metrics(metrics)
-        time.sleep(INTERVAL_SECONDS)
+        queue_metrics(metrics)
+        time.sleep(UPLOAD_INTERVAL_SECONDS)
 
 
 if __name__ == "__main__":
