@@ -36,7 +36,7 @@ The backend is split into two FastAPI services that share a Postgres database. T
 
 ### Aggregator API
 
-**Base URL:** `http://localhost:8001`
+**Base URL:** `http://200.69.13.70:5008`
 
 #### POST /metrics/
 
@@ -54,7 +54,7 @@ Submit a single metric event.
 **Example request:**
 
 ```json
-POST http://localhost:8001/metrics/
+POST http://200.69.13.70:5008/metrics/
 Content-Type: application/json
 
 {
@@ -82,7 +82,7 @@ Content-Type: application/json
 
 ### Reporting API
 
-**Base URL:** `http://localhost:8002`
+**Base URL:** `http://200.69.13.70:5009`
 
 #### GET /metrics/live
 
@@ -114,5 +114,5 @@ Returns older metrics that fall outside the live window, with full range query s
 
 Full auto-generated API docs (Swagger UI) are available at `/docs` on each service:
 
-- Aggregator: `http://localhost:8001/docs`
-- Reporting: `http://localhost:8002/docs`
+- Aggregator: `http://200.69.13.70:5008/docs`
+- Reporting: `http://200.69.13.70:5009/docs`

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import os
 
-AGGREGATOR_URL: str = os.getenv("AGGREGATOR_URL", "http://localhost:8001")
+AGGREGATOR_URL: str = os.getenv("AGGREGATOR_URL", "http://200.69.13.70:5008")
+REPORTING_URL: str = os.getenv("REPORTING_URL", "http://200.69.13.70:5009")
 REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
 UPLOAD_INTERVAL_SECONDS: int = int(os.getenv("UPLOAD_INTERVAL_SECONDS", "30"))

@@ -16,7 +16,7 @@ services:
     build: ./aggregator
     env_file: .env
     ports:
-      - "8001:8000"
+      - "5008:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -25,7 +25,7 @@ services:
     build: ./reporting
     env_file: .env
     ports:
-      - "8002:8000"
+      - "5009:8000"
     depends_on:
       postgres:
         condition: service_healthy

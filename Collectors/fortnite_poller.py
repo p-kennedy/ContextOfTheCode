@@ -6,7 +6,7 @@ from datetime import datetime
 
 import requests
 
-from config import FORTNITE_ISLAND_CODE, FORTNITE_POLL_INTERVAL_SECONDS
+from config import FORTNITE_ISLAND_CODE, FORTNITE_POLL_INTERVAL_SECONDS, REPORTING_URL
 from uploader_queue import push_metric
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 
 ISLAND_CODE = FORTNITE_ISLAND_CODE
 BASE_URL = f"https://api.fortnite.com/ecosystem/v1/islands/{ISLAND_CODE}/metrics/minute"
-REPORTING_URL = "http://localhost:8002/metrics/"
 DEVICE_ID = "fortnite-island"
 
 METRICS = {
@@ -27,7 +26,7 @@ def get_last_recorded_at() -> datetime | None:
     """Query the Reporting API for the most recent fortnite metric timestamp."""
     try:
         resp = requests.get(
-            REPORTING_URL,
+            f"{REPORTING_URL}/metrics/",
             params={"source": "fortnite", "limit": 1},
             timeout=5,
         )
