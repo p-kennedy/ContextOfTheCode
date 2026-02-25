@@ -21,7 +21,8 @@ def upload_cycle() -> None:
         return
 
     uploaded = 0
-    failed = 0
+    requeued = 0
+    discarded = 0
 
     for _ in range(total):
         metric = pop_metric()
@@ -31,12 +32,22 @@ def upload_cycle() -> None:
             resp = requests.post(_METRICS_ENDPOINT, json=metric, timeout=5)
             resp.raise_for_status()
             uploaded += 1
+        except requests.HTTPError as exc:
+            status = exc.response.status_code
+            body = exc.response.text
+            if 400 <= status < 500:
+                log.warning("Discarding metric (HTTP %d): %s | metric=%s", status, body, metric)
+                discarded += 1
+            else:
+                log.warning("Server error (HTTP %d), re-queuing: %s | metric=%s", status, body, metric)
+                push_metric(metric)
+                requeued += 1
         except requests.RequestException as exc:
-            log.warning("Failed to POST metric, re-queuing: %s", exc)
+            log.warning("Connection failure, re-queuing: %s | metric=%s", exc, metric)
             push_metric(metric)
-            failed += 1
+            requeued += 1
 
-    log.info("Upload cycle complete: %d uploaded, %d re-queued", uploaded, failed)
+    log.info("Upload cycle complete: %d uploaded, %d re-queued, %d discarded", uploaded, requeued, discarded)
 
 
 def main() -> None:
