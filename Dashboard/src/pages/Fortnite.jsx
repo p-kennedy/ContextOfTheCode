@@ -169,6 +169,7 @@ export default function Fortnite() {
                   strokeWidth={2}
                   dot={false}
                   activeDot={{ r: 4 }}
+                  connectNulls={true}
                 />
               ))}
             </LineChart>

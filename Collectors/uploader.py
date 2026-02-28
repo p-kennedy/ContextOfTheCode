@@ -1,17 +1,16 @@
 from __future__ import annotations
 
-import logging
 import time
 
 import requests
 
-from config import AGGREGATOR_URL, UPLOAD_INTERVAL_SECONDS
+import config
+from logger import get_logger
 from uploader_queue import pop_metric, push_metric, queue_length
 
-_METRICS_ENDPOINT = AGGREGATOR_URL.rstrip("/") + "/metrics/"
+log = get_logger(__name__)
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-log = logging.getLogger(__name__)
+_METRICS_ENDPOINT = config.AGGREGATOR_URL.rstrip("/") + "/metrics/"
 
 
 def upload_cycle() -> None:
@@ -51,10 +50,10 @@ def upload_cycle() -> None:
 
 
 def main() -> None:
-    log.info("Uploader started (interval=%ds, target=%s)", UPLOAD_INTERVAL_SECONDS, _METRICS_ENDPOINT)
+    log.info("Uploader started (interval=%ds, target=%s)", config.UPLOAD_INTERVAL_SECONDS, _METRICS_ENDPOINT)
     while True:
         upload_cycle()
-        time.sleep(UPLOAD_INTERVAL_SECONDS)
+        time.sleep(config.UPLOAD_INTERVAL_SECONDS)
 
 
 if __name__ == "__main__":

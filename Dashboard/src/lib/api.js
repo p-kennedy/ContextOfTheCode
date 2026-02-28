@@ -24,7 +24,7 @@ export function pivotByTime(rows, metricNames) {
     if (!map[r.recorded_at]) map[r.recorded_at] = { recorded_at: r.recorded_at }
     map[r.recorded_at][r.metric_name] = r.value
   })
-  return Object.values(map).sort((a, b) => a.recorded_at.localeCompare(b.recorded_at))
+  return Object.values(map).sort((a, b) => new Date(a.recorded_at) - new Date(b.recorded_at))
 }
 
 export function fmtDateTime(iso) {

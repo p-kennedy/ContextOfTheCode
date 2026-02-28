@@ -147,6 +147,7 @@ export default function HistoricCharts() {
                   strokeWidth={2}
                   dot={false}
                   activeDot={{ r: 4 }}
+                  connectNulls={true}
                 />
               ))}
             </LineChart>

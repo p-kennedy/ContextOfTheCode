@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-import logging
 import time
 from datetime import datetime
 
 import requests
 
-from config import FORTNITE_ISLAND_CODE, FORTNITE_POLL_INTERVAL_SECONDS, REPORTING_URL
+import config
+import command_listener
+from logger import get_logger
 from uploader_queue import push_metric
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
-ISLAND_CODE = FORTNITE_ISLAND_CODE
+ISLAND_CODE = config.FORTNITE_ISLAND_CODE
 BASE_URL = f"https://api.fortnite.com/ecosystem/v1/islands/{ISLAND_CODE}/metrics/minute"
 DEVICE_ID = "fortnite-island"
 
@@ -22,11 +22,20 @@ METRICS = {
 }
 
 
+def _handle_set_interval(value: str) -> None:
+    try:
+        seconds = int(value)
+        config.FORTNITE_POLL_INTERVAL_SECONDS = seconds
+        logger.info("Fortnite poll interval updated to %ds", seconds)
+    except ValueError:
+        logger.warning("set_interval: invalid value %r", value)
+
+
 def get_last_recorded_at() -> datetime | None:
     """Query the Reporting API for the most recent fortnite metric timestamp."""
     try:
         resp = requests.get(
-            f"{REPORTING_URL}/metrics/",
+            f"{config.REPORTING_URL}/metrics/",
             params={"source": "fortnite", "limit": 1},
             timeout=5,
         )
@@ -40,7 +49,6 @@ def get_last_recorded_at() -> datetime | None:
 
 
 def fetch_intervals(endpoint: str) -> list[dict]:
-    """Fetch all intervals from the Fortnite API for the given metric."""
     url = f"{BASE_URL}/{endpoint}"
     resp = requests.get(url, timeout=10)
     resp.raise_for_status()
@@ -48,7 +56,6 @@ def fetch_intervals(endpoint: str) -> list[dict]:
 
 
 def parse_interval_time(interval: dict) -> datetime:
-    """Parse the timestamp from an interval entry."""
     raw = interval.get("time") or interval.get("start") or interval.get("timestamp")
     return datetime.fromisoformat(raw)
 
@@ -90,11 +97,17 @@ def poll_and_queue() -> None:
 
 
 def main() -> None:
-    logger.info("Fortnite poller started (island=%s, interval=%ss)", ISLAND_CODE, FORTNITE_POLL_INTERVAL_SECONDS)
+    command_listener.register_handler("set_interval", _handle_set_interval)
+    command_listener.start()
+
+    logger.info(
+        "Fortnite poller started (island=%s, interval=%ss)",
+        ISLAND_CODE, config.FORTNITE_POLL_INTERVAL_SECONDS,
+    )
     while True:
         logger.info("Polling Fortnite metrics...")
         poll_and_queue()
-        time.sleep(FORTNITE_POLL_INTERVAL_SECONDS)
+        time.sleep(config.FORTNITE_POLL_INTERVAL_SECONDS)
 
 
 if __name__ == "__main__":

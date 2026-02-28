@@ -1,18 +1,27 @@
 from __future__ import annotations
 
-import logging
 import platform
 import time
 
 import psutil
 
-from config import UPLOAD_INTERVAL_SECONDS
+import config
+import command_listener
+from logger import get_logger
 from uploader_queue import push_metric
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 DEVICE_ID = platform.node()
+
+
+def _handle_set_interval(value: str) -> None:
+    try:
+        seconds = int(value)
+        config.PC_COLLECT_INTERVAL_SECONDS = seconds
+        logger.info("Interval updated to %ds", seconds)
+    except ValueError:
+        logger.warning("set_interval: invalid value %r", value)
 
 
 def collect_metrics() -> list[dict]:
@@ -60,12 +69,18 @@ def queue_metrics(metrics: list[dict]) -> None:
 
 
 def main() -> None:
-    logger.info("PC collector started (device_id=%s, interval=%ss)", DEVICE_ID, UPLOAD_INTERVAL_SECONDS)
+    command_listener.register_handler("set_interval", _handle_set_interval)
+    command_listener.start()
+
+    logger.info(
+        "PC collector started (device_id=%s, interval=%ss)",
+        DEVICE_ID, config.PC_COLLECT_INTERVAL_SECONDS,
+    )
     while True:
         logger.info("Collecting metrics...")
         metrics = collect_metrics()
         queue_metrics(metrics)
-        time.sleep(UPLOAD_INTERVAL_SECONDS)
+        time.sleep(config.PC_COLLECT_INTERVAL_SECONDS)
 
 
 if __name__ == "__main__":

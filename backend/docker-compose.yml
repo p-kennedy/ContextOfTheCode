@@ -12,6 +12,14 @@ services:
       timeout: 3s
       retries: 5
 
+  redis-pubsub:
+    image: redis:7-alpine
+    ports:
+      - "5010:6379"
+    volumes:
+      - redispubsubdata:/data
+    command: redis-server --appendonly yes
+
   aggregator:
     build: ./aggregator
     env_file: .env
@@ -20,6 +28,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis-pubsub:
+        condition: service_started
 
   reporting:
     build: ./reporting
@@ -32,3 +42,4 @@ services:
 
 volumes:
   pgdata:
+  redispubsubdata:
