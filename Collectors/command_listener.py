@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import platform
 import threading
+import time
 from typing import Callable
 
 import redis
@@ -48,19 +49,24 @@ def _on_message(message: dict) -> None:
 
 
 def _listener_thread() -> None:
-    r = redis.Redis(
-        host=config.REDIS_PUBSUB_HOST,
-        port=config.REDIS_PUBSUB_PORT,
-        decode_responses=True,
-    )
-    pubsub = r.pubsub()
-    pubsub.subscribe(f"commands:{DEVICE_ID}", "commands:all")
-    logger.info(
-        "Command listener connected (device=%s, redis=%s:%s, channels=commands:%s,commands:all)",
-        DEVICE_ID, config.REDIS_PUBSUB_HOST, config.REDIS_PUBSUB_PORT, DEVICE_ID,
-    )
-    for message in pubsub.listen():
-        _on_message(message)
+    while True:
+        try:
+            r = redis.Redis(
+                host=config.REDIS_PUBSUB_HOST,
+                port=config.REDIS_PUBSUB_PORT,
+                decode_responses=True,
+            )
+            pubsub = r.pubsub()
+            pubsub.subscribe(f"commands:{DEVICE_ID}", "commands:all")
+            logger.info(
+                "Command listener connected (device=%s, redis=%s:%s, channels=commands:%s,commands:all)",
+                DEVICE_ID, config.REDIS_PUBSUB_HOST, config.REDIS_PUBSUB_PORT, DEVICE_ID,
+            )
+            for message in pubsub.listen():
+                _on_message(message)
+        except Exception as exc:
+            logger.warning("Command listener disconnected: %s — reconnecting in 5s", exc)
+            time.sleep(5)
 
 
 def register_handler(command: str, handler: Callable[[str], None]) -> None:

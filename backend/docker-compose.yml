@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     env_file: .env
     ports:
       - "5432:5432"
@@ -14,6 +15,7 @@ services:
 
   redis-pubsub:
     image: redis:7-alpine
+    restart: unless-stopped
     ports:
       - "5010:6379"
     volumes:
@@ -22,7 +24,11 @@ services:
 
   aggregator:
     build: ./aggregator
+    restart: unless-stopped
     env_file: .env
+    environment:
+      REDIS_PUBSUB_HOST: redis-pubsub
+      REDIS_PUBSUB_PORT: 6379
     ports:
       - "5008:8000"
     depends_on:
@@ -33,6 +39,7 @@ services:
 
   reporting:
     build: ./reporting
+    restart: unless-stopped
     env_file: .env
     ports:
       - "5009:8000"

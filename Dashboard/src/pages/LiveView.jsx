@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { fetchLive, fmtDateTime } from '../lib/api'
 
 const AGGREGATOR_BASE = 'http://200.69.13.70:5008'
@@ -78,6 +78,12 @@ function DeviceCard({ deviceId, metricMap, onCommand }) {
               {s >= 60 ? `${s / 60}m` : `${s}s`}
             </button>
           ))}
+          <button
+            onClick={() => onCommand(deviceId, 'ping')}
+            className="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition-colors"
+          >
+            Ping
+          </button>
         </div>
       </div>
     </div>
@@ -88,9 +94,7 @@ export default function LiveView() {
   const [deviceMap, setDeviceMap] = useState({})
   const [lastUpdated, setLastUpdated] = useState(null)
   const [error, setError] = useState(null)
-  const [confirmation, setConfirmation] = useState(null)
   const [commandLog, setCommandLog] = useState([])
-  const confirmTimerRef = useRef(null)
 
   async function load() {
     try {
@@ -137,24 +141,14 @@ export default function LiveView() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
 
-      const label = value ? `${command}=${value}` : command
-      const msg = deviceId === 'all'
-        ? `Broadcast '${label}' sent`
-        : `'${label}' sent to ${deviceId} (${data.receivers} receiver${data.receivers !== 1 ? 's' : ''})`
-
-      setConfirmation({ ok: true, msg })
       setCommandLog(prev =>
         prev.map(e => e.id === entry.id ? { ...e, status: 'ok', receivers: data.receivers } : e)
       )
     } catch (e) {
-      setConfirmation({ ok: false, msg: `Failed: ${e.message}` })
       setCommandLog(prev =>
         prev.map(e => e.id === entry.id ? { ...e, status: 'error' } : e)
       )
     }
-
-    clearTimeout(confirmTimerRef.current)
-    confirmTimerRef.current = setTimeout(() => setConfirmation(null), 4000)
   }
 
   const devices = Object.keys(deviceMap)
@@ -206,16 +200,6 @@ export default function LiveView() {
       {/* Device Control — broadcast panel */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
         <h2 className="text-base font-semibold text-slate-800 mb-4">Device Control</h2>
-
-        {confirmation && (
-          <div className={`mb-4 px-4 py-2.5 rounded-xl text-sm font-medium ${
-            confirmation.ok
-              ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
-              : 'bg-red-50 border border-red-200 text-red-700'
-          }`}>
-            {confirmation.msg}
-          </div>
-        )}
 
         <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
           Broadcast to All Devices
