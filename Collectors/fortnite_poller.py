@@ -31,12 +31,12 @@ def _handle_set_interval(value: str) -> None:
         logger.warning("set_interval: invalid value %r", value)
 
 
-def get_last_recorded_at() -> datetime | None:
-    """Query the Reporting API for the most recent fortnite metric timestamp."""
+def get_last_recorded_at(metric_name: str) -> datetime | None:
+    """Query the Reporting API for the most recent recorded_at for a specific metric."""
     try:
         resp = requests.get(
-            f"{config.REPORTING_URL}/metrics/",
-            params={"source": "fortnite", "limit": 1},
+            f"{config.REPORTING_URL}/metrics/history",
+            params={"source": "fortnite", "metric_name": metric_name, "limit": 1},
             timeout=5,
         )
         resp.raise_for_status()
@@ -44,7 +44,7 @@ def get_last_recorded_at() -> datetime | None:
         if results:
             return datetime.fromisoformat(results[0]["recorded_at"])
     except requests.RequestException as exc:
-        logger.warning("Could not fetch last recorded_at: %s", exc)
+        logger.warning("Could not fetch last recorded_at for %s: %s", metric_name, exc)
     return None
 
 
@@ -61,13 +61,13 @@ def parse_interval_time(interval: dict) -> datetime:
 
 
 def poll_and_queue() -> None:
-    last_recorded = get_last_recorded_at()
-    if last_recorded is None:
-        logger.info("No existing fortnite data in DB, will queue all non-null intervals")
-    else:
-        logger.info("Last recorded_at in DB: %s", last_recorded.isoformat())
-
     for endpoint, metric_name in METRICS.items():
+        last_recorded = get_last_recorded_at(metric_name)
+        if last_recorded is None:
+            logger.info("%s: no existing data, will queue all non-null intervals", metric_name)
+        else:
+            logger.info("%s: last recorded_at = %s", metric_name, last_recorded.isoformat())
+
         queued = 0
         try:
             intervals = fetch_intervals(endpoint)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import platform
 import time
+from datetime import datetime, timezone
 
 import psutil
 
@@ -25,6 +26,8 @@ def _handle_set_interval(value: str) -> None:
 
 
 def collect_metrics() -> list[dict]:
+    now = datetime.now(timezone.utc).isoformat()
+
     thread_count = 0
     for process in psutil.process_iter():
         try:
@@ -39,6 +42,7 @@ def collect_metrics() -> list[dict]:
             "metric_name": "cpu_percent",
             "value": psutil.cpu_percent(interval=0.2),
             "unit": "percent",
+            "recorded_at": now,
         },
         {
             "device_id": DEVICE_ID,
@@ -46,18 +50,21 @@ def collect_metrics() -> list[dict]:
             "metric_name": "ram_usage_percent",
             "value": psutil.virtual_memory().percent,
             "unit": "percent",
+            "recorded_at": now,
         },
         {
             "device_id": DEVICE_ID,
             "source": "pc",
             "metric_name": "process_count",
             "value": float(len(psutil.pids())),
+            "recorded_at": now,
         },
         {
             "device_id": DEVICE_ID,
             "source": "pc",
             "metric_name": "thread_count",
             "value": float(thread_count),
+            "recorded_at": now,
         },
     ]
 
