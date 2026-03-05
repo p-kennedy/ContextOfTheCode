@@ -22,6 +22,14 @@ METRICS = {
 }
 
 
+def _handle_set_island(value: str) -> None:
+    global ISLAND_CODE, BASE_URL
+    config.FORTNITE_ISLAND_CODE = value
+    ISLAND_CODE = value
+    BASE_URL = f"https://api.fortnite.com/ecosystem/v1/islands/{ISLAND_CODE}/metrics/minute"
+    logger.info("Island switched to %s", value)
+
+
 def _handle_set_interval(value: str) -> None:
     try:
         seconds = int(value)
@@ -97,8 +105,9 @@ def poll_and_queue() -> None:
 
 
 def main() -> None:
+    command_listener.register_handler("set_island", _handle_set_island)
     command_listener.register_handler("set_interval", _handle_set_interval)
-    command_listener.start()
+    command_listener.start(device_id="fortnite-island")
 
     logger.info(
         "Fortnite poller started (island=%s, interval=%ss)",

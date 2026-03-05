@@ -28,15 +28,12 @@ function ChartTooltip({ active, payload, label }) {
   )
 }
 
-/** Fetch distinct device IDs from the metrics list endpoint */
 async function fetchDeviceIds() {
-  const url = new URL(`${API_BASE}/metrics/`)
+  const url = new URL(`${API_BASE}/metrics/devices`)
   url.searchParams.set('source', 'pc')
-  url.searchParams.set('limit', '1000')
   const res = await fetch(url)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  const rows = await res.json()
-  return [...new Set(rows.map(r => r.device_id))].sort()
+  return res.json()
 }
 
 export default function HistoricCharts() {

@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
-import { fetchHistory, pivotByTime, fmtDateTime } from '../lib/api'
+import { API_BASE, fetchHistory, pivotByTime, fmtDateTime } from '../lib/api'
 
 const AGGREGATOR_BASE = 'http://200.69.13.70:5008'
 
@@ -14,9 +14,19 @@ const ISLAND_OPTIONS = [
   { code: '7980-5509-9541', name: 'Boxfight District' },
 ]
 
+const QUICK_RANGES = [
+  { key: 'hour', label: 'Last Hour', ms: 60 * 60 * 1000 },
+  { key: 'day',  label: 'Last Day',  ms: 24 * 60 * 60 * 1000 },
+  { key: 'week', label: 'Last Week', ms: 7 * 24 * 60 * 60 * 1000 },
+]
+
 const METRICS = ['peak_ccu', 'unique_players']
 const COLORS = { peak_ccu: '#8b5cf6', unique_players: '#10b981' }
 const LABELS = { peak_ccu: 'Peak CCU', unique_players: 'Unique Players' }
+
+function islandLabel(code) {
+  return ISLAND_OPTIONS.find(o => o.code === code)?.name ?? code
+}
 
 function StatBadge({ label, value }) {
   return (
@@ -45,25 +55,47 @@ function ChartTooltip({ active, payload, label }) {
 
 export default function Fortnite() {
   const [data, setData] = useState([])
-  const [since, setSince] = useState('')
-  const [until, setUntil] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [loadedCount, setLoadedCount] = useState(null)
 
+  // Quick range
+  const [activeQuick, setActiveQuick] = useState(null)
+
+  // Manual date pickers
+  const [since, setSince] = useState('')
+  const [until, setUntil] = useState('')
+  const [showCustom, setShowCustom] = useState(false)
+
+  // Island command (switch poller target)
   const [selectedIsland, setSelectedIsland] = useState(ISLAND_OPTIONS[0].code)
-  // null | 'sending' | 'ok' | 'no-listeners' | 'error'
-  const [islandStatus, setIslandStatus] = useState(null)
+  const [islandStatus, setIslandStatus] = useState(null) // null | 'sending' | 'ok' | 'no-listeners' | 'error'
   const [islandReceivers, setIslandReceivers] = useState(null)
 
-  async function load() {
+  // Island filter (chart data)
+  const [islandDevices, setIslandDevices] = useState([])
+  const [selectedIslandFilter, setSelectedIslandFilter] = useState('all')
+  const devicePollRef = useRef(null)
+
+  function buildParams() {
+    const params = { source: 'fortnite', limit: 1000 }
+    if (selectedIslandFilter !== 'all') params.device_id = selectedIslandFilter
+    if (activeQuick) {
+      const range = QUICK_RANGES.find(r => r.key === activeQuick)
+      params.since = new Date(Date.now() - range.ms).toISOString()
+      params.until = new Date().toISOString()
+    } else {
+      if (since) params.since = since
+      if (until) params.until = until + 'T23:59:59'
+    }
+    return params
+  }
+
+  async function load(overrideParams) {
     setLoading(true)
     setError(null)
     try {
-      const params = { source: 'fortnite', limit: 1000 }
-      if (since) params.since = since
-      if (until) params.until = until + 'T23:59:59'
-      const rows = await fetchHistory(params)
+      const rows = await fetchHistory(overrideParams ?? buildParams())
       setData(pivotByTime(rows, METRICS))
       setLoadedCount(rows.length)
     } catch (e) {
@@ -73,7 +105,38 @@ export default function Fortnite() {
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load({ source: 'fortnite', limit: 1000 }) }, [])
+
+  function handleQuickClick(key) {
+    setActiveQuick(key)
+    setShowCustom(false)
+    const range = QUICK_RANGES.find(r => r.key === key)
+    const sinceISO = new Date(Date.now() - range.ms).toISOString()
+    const untilISO = new Date().toISOString()
+    const params = { source: 'fortnite', limit: 1000, since: sinceISO, until: untilISO }
+    if (selectedIslandFilter !== 'all') params.device_id = selectedIslandFilter
+    load(params)
+  }
+
+  function handleCustomLoad() {
+    setActiveQuick(null)
+    load()
+  }
+
+  function loadIslandDevices() {
+    const url = new URL(`${API_BASE}/metrics/devices`)
+    url.searchParams.set('source', 'fortnite')
+    fetch(url)
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(ids => setIslandDevices(ids))
+      .catch(() => {})
+  }
+
+  useEffect(() => {
+    loadIslandDevices()
+    devicePollRef.current = setInterval(loadIslandDevices, 60_000)
+    return () => clearInterval(devicePollRef.current)
+  }, [])
 
   async function switchIsland() {
     setIslandStatus('sending')
@@ -121,7 +184,7 @@ export default function Fortnite() {
         <p className="text-sm text-slate-500 mt-0.5">Island player metrics over time</p>
       </div>
 
-      {/* Island selector */}
+      {/* Island command — switch poller target */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-6">
         <div className="flex items-center gap-2 mb-3">
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Island</p>
@@ -176,36 +239,95 @@ export default function Fortnite() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-6 flex flex-wrap items-end gap-4">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Start Date</label>
-          <input
-            type="date"
-            value={since}
-            onChange={e => setSince(e.target.value)}
-            className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-6">
+
+        {/* Row 1: quick range + island filter */}
+        <div className="flex flex-wrap items-end gap-4 mb-4">
+          {/* Quick range */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Time Range</label>
+            <div className="flex gap-2">
+              {QUICK_RANGES.map(r => (
+                <button
+                  key={r.key}
+                  onClick={() => handleQuickClick(r.key)}
+                  disabled={loading}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 ${
+                    activeQuick === r.key
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-slate-100 text-slate-700 hover:bg-purple-600 hover:text-white'
+                  }`}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Island filter */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Filter Island</label>
+            <select
+              value={selectedIslandFilter}
+              onChange={e => setSelectedIslandFilter(e.target.value)}
+              className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              <option value="all">All Islands</option>
+              {islandDevices.map(id => (
+                <option key={id} value={id}>{islandLabel(id)}</option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">End Date</label>
-          <input
-            type="date"
-            value={until}
-            onChange={e => setUntil(e.target.value)}
-            className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+
+        {/* Custom range toggle */}
         <button
-          onClick={load}
-          disabled={loading}
-          className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+          onClick={() => setShowCustom(v => !v)}
+          className="text-xs text-slate-400 hover:text-slate-600 transition-colors flex items-center gap-1"
         >
-          {loading ? 'Loading…' : 'Load'}
+          <svg
+            className={`w-3 h-3 transition-transform ${showCustom ? 'rotate-90' : ''}`}
+            fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+          </svg>
+          Custom Range
         </button>
-        {loadedCount != null && (
-          <span className="text-xs text-slate-400 self-end pb-2">
-            {loadedCount} rows loaded
-          </span>
+
+        {/* Custom date pickers — collapsed by default */}
+        {showCustom && (
+          <div className="flex flex-wrap items-end gap-4 mt-3 pt-3 border-t border-slate-100">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">Start Date</label>
+              <input
+                type="date"
+                value={since}
+                onChange={e => { setSince(e.target.value); setActiveQuick(null) }}
+                className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">End Date</label>
+              <input
+                type="date"
+                value={until}
+                onChange={e => { setUntil(e.target.value); setActiveQuick(null) }}
+                className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+            <button
+              onClick={handleCustomLoad}
+              disabled={loading}
+              className="px-5 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              {loading ? 'Loading…' : 'Load'}
+            </button>
+            {loadedCount != null && (
+              <span className="text-xs text-slate-400 self-end pb-2">
+                {loadedCount} rows loaded
+              </span>
+            )}
+          </div>
         )}
       </div>
 
@@ -218,7 +340,12 @@ export default function Fortnite() {
 
       {/* Chart */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-        <h2 className="text-base font-semibold text-slate-800 mb-6">Player Activity Over Time</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-base font-semibold text-slate-800">Player Activity Over Time</h2>
+          {loadedCount != null && !showCustom && (
+            <span className="text-xs text-slate-400">{loadedCount.toLocaleString()} rows</span>
+          )}
+        </div>
         {data.length === 0 && !loading ? (
           <div className="flex items-center justify-center h-64 text-slate-400 text-sm">
             No Fortnite data for the selected range
@@ -260,6 +387,12 @@ export default function Fortnite() {
               ))}
             </LineChart>
           </ResponsiveContainer>
+        )}
+
+        {loadedCount === 1000 && (
+          <div className="mt-4 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-xs">
+            Data may be truncated — try a shorter time range.
+          </div>
         )}
       </div>
     </div>

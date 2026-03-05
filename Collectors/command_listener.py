@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import platform
 import threading
 import time
 from typing import Callable
@@ -13,13 +12,11 @@ from logger import get_logger
 
 logger = get_logger(__name__)
 
-DEVICE_ID = platform.node()
-
 # Map command name -> handler(value: str)
 _handlers: dict[str, Callable[[str], None]] = {}
 
 
-def _on_message(message: dict) -> None:
+def _on_message(message: dict, device_id: str) -> None:
     if message["type"] != "message":
         return
     try:
@@ -35,7 +32,7 @@ def _on_message(message: dict) -> None:
     logger.info("Command received: command=%s value=%s target=%s", command, value, target)
 
     if command == "ping":
-        logger.info("Pong! Device %s is alive and listening.", DEVICE_ID)
+        logger.info("Pong! Device %s is alive and listening.", device_id)
         return
 
     handler = _handlers.get(command)
@@ -48,7 +45,7 @@ def _on_message(message: dict) -> None:
         logger.warning("Unknown command: %s", command)
 
 
-def _listener_thread() -> None:
+def _listener_thread(device_id: str) -> None:
     while True:
         try:
             r = redis.Redis(
@@ -57,13 +54,13 @@ def _listener_thread() -> None:
                 decode_responses=True,
             )
             pubsub = r.pubsub()
-            pubsub.subscribe(f"commands:{DEVICE_ID}", "commands:all")
+            pubsub.subscribe(f"commands:{device_id}", "commands:all")
             logger.info(
                 "Command listener connected (device=%s, redis=%s:%s, channels=commands:%s,commands:all)",
-                DEVICE_ID, config.REDIS_PUBSUB_HOST, config.REDIS_PUBSUB_PORT, DEVICE_ID,
+                device_id, config.REDIS_PUBSUB_HOST, config.REDIS_PUBSUB_PORT, device_id,
             )
             for message in pubsub.listen():
-                _on_message(message)
+                _on_message(message, device_id)
         except Exception as exc:
             logger.warning("Command listener disconnected: %s — reconnecting in 5s", exc)
             time.sleep(5)
@@ -74,8 +71,13 @@ def register_handler(command: str, handler: Callable[[str], None]) -> None:
     _handlers[command] = handler
 
 
-def start(daemon: bool = True) -> threading.Thread:
+def start(device_id: str, daemon: bool = True) -> threading.Thread:
     """Start the listener in a background thread and return it."""
-    t = threading.Thread(target=_listener_thread, name="command-listener", daemon=daemon)
+    t = threading.Thread(
+        target=_listener_thread,
+        args=(device_id,),
+        name="command-listener",
+        daemon=daemon,
+    )
     t.start()
     return t

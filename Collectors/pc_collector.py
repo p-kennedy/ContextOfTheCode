@@ -77,7 +77,7 @@ def queue_metrics(metrics: list[dict]) -> None:
 
 def main() -> None:
     command_listener.register_handler("set_interval", _handle_set_interval)
-    command_listener.start()
+    command_listener.start(device_id=platform.node())
 
     logger.info(
         "PC collector started (device_id=%s, interval=%ss)",
