@@ -53,7 +53,7 @@ services:
     ports:
       - "5011:80"
     volumes:
-      - ../../Dashboard/dist:/usr/share/nginx/html:ro
+      - ../Dashboard/dist:/usr/share/nginx/html:ro
 
 volumes:
   pgdata:
