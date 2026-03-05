@@ -5,6 +5,9 @@ import {
 } from 'recharts'
 import { API_BASE, fetchHistory, pivotByTime, fmtDateTime } from '../lib/api'
 
+const AGGREGATOR_BASE = 'http://200.69.13.70:5008'
+const PC_INTERVAL_PRESETS = [10, 30, 60, 300]
+
 const METRICS = ['ram_usage_percent', 'cpu_percent']
 const COLORS = { ram_usage_percent: '#3b82f6', cpu_percent: '#f59e0b' }
 const LABELS = { ram_usage_percent: 'RAM %', cpu_percent: 'CPU %' }
@@ -13,6 +16,12 @@ const QUICK_RANGES = [
   { key: 'hour', label: 'Last Hour', ms: 60 * 60 * 1000 },
   { key: 'day',  label: 'Last Day',  ms: 24 * 60 * 60 * 1000 },
 ]
+
+function fmtPreset(s) {
+  if (s >= 3600) return `${s / 3600}h`
+  if (s >= 60) return `${s / 60}m`
+  return `${s}s`
+}
 
 function ChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
@@ -49,6 +58,10 @@ export default function HistoricCharts() {
   const [showCustom, setShowCustom] = useState(false)
   const [customSince, setCustomSince] = useState('')
   const [customUntil, setCustomUntil] = useState('')
+
+  // Interval command feedback
+  const [intervalStatus, setIntervalStatus] = useState(null) // null | 'sending' | 'ok' | 'no-listeners' | 'error'
+  const [intervalReceivers, setIntervalReceivers] = useState(null)
 
   // Device filter
   const [devices, setDevices] = useState([])
@@ -120,6 +133,31 @@ export default function HistoricCharts() {
 
   function handleDeviceChange(id) {
     setSelectedDevice(id)
+  }
+
+  async function sendIntervalCommand(seconds) {
+    setIntervalStatus('sending')
+    setIntervalReceivers(null)
+    const targetDevice = selectedDevice === 'all' ? 'all' : selectedDevice
+    try {
+      const res = await fetch(`${AGGREGATOR_BASE}/commands/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device_id: targetDevice, command: 'set_interval', value: String(seconds) }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      if (data.receivers === 0) {
+        setIntervalStatus('no-listeners')
+      } else {
+        setIntervalReceivers(data.receivers)
+        setIntervalStatus('ok')
+      }
+    } catch {
+      setIntervalStatus('error')
+    } finally {
+      setTimeout(() => setIntervalStatus(null), 5000)
+    }
   }
 
   const tickFormatter = (iso) => {
@@ -222,6 +260,43 @@ export default function HistoricCharts() {
             </button>
           </div>
         )}
+      </div>
+
+      {/* Collector interval control */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-6">
+        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
+          Collect Interval{selectedDevice !== 'all' ? ` — ${selectedDevice}` : ' — All Devices'}
+        </p>
+        <div className="flex flex-wrap gap-2 items-center">
+          {PC_INTERVAL_PRESETS.map(s => (
+            <button
+              key={s}
+              onClick={() => sendIntervalCommand(s)}
+              disabled={intervalStatus === 'sending'}
+              className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-700 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {fmtPreset(s)}
+            </button>
+          ))}
+          {intervalStatus === 'ok' && (
+            <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+              Command received by {intervalReceivers} collector{intervalReceivers !== 1 ? 's' : ''}
+            </span>
+          )}
+          {intervalStatus === 'no-listeners' && (
+            <span className="flex items-center gap-1.5 text-xs text-amber-600 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+              Command sent but no collectors are listening — is the PC collector running?
+            </span>
+          )}
+          {intervalStatus === 'error' && (
+            <span className="flex items-center gap-1.5 text-xs text-red-500 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />
+              Failed to send command
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Mixed-data note */}

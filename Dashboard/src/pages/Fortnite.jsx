@@ -8,10 +8,11 @@ import { API_BASE, fetchHistory, pivotByTime, fmtDateTime } from '../lib/api'
 const AGGREGATOR_BASE = 'http://200.69.13.70:5008'
 
 const ISLAND_OPTIONS = [
-  { code: '3225-0366-8885', name: 'MetricsFlow Test Island' },
-  { code: '6562-8953-6567', name: 'Pandvil Box Fight' },
-  { code: '6531-4403-0726', name: 'The Pit' },
-  { code: '7980-5509-9541', name: 'Boxfight District' },
+  { code: '3225-0366-8885', name: 'Steal The Brainrot' },
+  { code: '5253-8468-3364', name: 'Murder Mystery' },
+  { code: '2898-7886-8847', name: 'Crazy Red Vs Blue' },
+  { code: '4590-4493-7113', name: 'The Pit - Free For All' },
+  { code: '1832-0431-4852', name: '1v1 Build Fights! [4.6.4]' },
 ]
 
 const QUICK_RANGES = [
@@ -20,9 +21,17 @@ const QUICK_RANGES = [
   { key: 'week', label: 'Last Week', ms: 7 * 24 * 60 * 60 * 1000 },
 ]
 
+const FN_INTERVAL_PRESETS = [300, 600, 1800, 3600]
+
 const METRICS = ['peak_ccu', 'unique_players']
 const COLORS = { peak_ccu: '#8b5cf6', unique_players: '#10b981' }
 const LABELS = { peak_ccu: 'Peak CCU', unique_players: 'Unique Players' }
+
+function fmtPreset(s) {
+  if (s >= 3600) return `${s / 3600}h`
+  if (s >= 60) return `${s / 60}m`
+  return `${s}s`
+}
 
 function islandLabel(code) {
   return ISLAND_OPTIONS.find(o => o.code === code)?.name ?? code
@@ -71,6 +80,10 @@ export default function Fortnite() {
   const [selectedIsland, setSelectedIsland] = useState(ISLAND_OPTIONS[0].code)
   const [islandStatus, setIslandStatus] = useState(null) // null | 'sending' | 'ok' | 'no-listeners' | 'error'
   const [islandReceivers, setIslandReceivers] = useState(null)
+
+  // Interval command feedback
+  const [intervalStatus, setIntervalStatus] = useState(null) // null | 'sending' | 'ok' | 'no-listeners' | 'error'
+  const [intervalReceivers, setIntervalReceivers] = useState(null)
 
   // Island filter (chart data)
   const [islandDevices, setIslandDevices] = useState([])
@@ -137,6 +150,30 @@ export default function Fortnite() {
     devicePollRef.current = setInterval(loadIslandDevices, 60_000)
     return () => clearInterval(devicePollRef.current)
   }, [])
+
+  async function sendIntervalCommand(seconds) {
+    setIntervalStatus('sending')
+    setIntervalReceivers(null)
+    try {
+      const res = await fetch(`${AGGREGATOR_BASE}/commands/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device_id: 'fortnite-island', command: 'set_interval', value: String(seconds) }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      if (data.receivers === 0) {
+        setIntervalStatus('no-listeners')
+      } else {
+        setIntervalReceivers(data.receivers)
+        setIntervalStatus('ok')
+      }
+    } catch {
+      setIntervalStatus('error')
+    } finally {
+      setTimeout(() => setIntervalStatus(null), 5000)
+    }
+  }
 
   async function switchIsland() {
     setIslandStatus('sending')
@@ -329,6 +366,43 @@ export default function Fortnite() {
             )}
           </div>
         )}
+      </div>
+
+      {/* Poller interval control */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-6">
+        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
+          Poll Interval — Fortnite Poller
+        </p>
+        <div className="flex flex-wrap gap-2 items-center">
+          {FN_INTERVAL_PRESETS.map(s => (
+            <button
+              key={s}
+              onClick={() => sendIntervalCommand(s)}
+              disabled={intervalStatus === 'sending'}
+              className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-purple-600 hover:text-white text-slate-700 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {fmtPreset(s)}
+            </button>
+          ))}
+          {intervalStatus === 'ok' && (
+            <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+              Command received by {intervalReceivers} collector{intervalReceivers !== 1 ? 's' : ''}
+            </span>
+          )}
+          {intervalStatus === 'no-listeners' && (
+            <span className="flex items-center gap-1.5 text-xs text-amber-600 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+              Command sent but no collectors are listening — is the Fortnite poller running?
+            </span>
+          )}
+          {intervalStatus === 'error' && (
+            <span className="flex items-center gap-1.5 text-xs text-red-500 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />
+              Failed to send command
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Error */}
