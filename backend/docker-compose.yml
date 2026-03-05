@@ -47,6 +47,14 @@ services:
       postgres:
         condition: service_healthy
 
+  dashboard:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "5011:80"
+    volumes:
+      - ../../Dashboard/dist:/usr/share/nginx/html:ro
+
 volumes:
   pgdata:
   redispubsubdata:

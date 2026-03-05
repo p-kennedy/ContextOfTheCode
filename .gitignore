@@ -14,7 +14,6 @@ ENV/
 
 # Packaging/build artifacts
 build/
-dist/
 *.egg-info/
 .eggs/
 pip-wheel-metadata/
