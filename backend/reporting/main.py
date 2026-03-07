@@ -1,8 +1,11 @@
+import logging
 import os
 from contextlib import asynccontextmanager
 
 import redis as redis_lib
 from fastapi import FastAPI
+
+logging.basicConfig(level=logging.INFO)
 from fastapi.middleware.cors import CORSMiddleware
 
 from routers.metrics import router as metrics_router
