@@ -1,6 +1,7 @@
 import datetime as dt
+import json
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -106,6 +107,7 @@ async def list_devices(
 
 @router.get("/history", response_model=MetricHistoryPage)
 async def history_metrics(
+    request: Request,
     metric_name: str | None = None,
     source: str | None = None,
     device_id: str | None = None,
@@ -115,6 +117,12 @@ async def history_metrics(
     cursor: dt.datetime | None = None,
     session: AsyncSession = Depends(get_session),
 ):
+    cache_key = f"history:{source}:{device_id}:{metric_name}:{since}:{until}:{limit}:{cursor}"
+    redis = request.app.state.redis
+    cached = redis.get(cache_key)
+    if cached:
+        return json.loads(cached)
+
     cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(minutes=5)
     query = (
         select(MetricEvent)
@@ -137,4 +145,21 @@ async def history_metrics(
     result = await session.execute(query)
     rows = result.scalars().all()
     next_cursor = rows[-1].recorded_at.isoformat() if len(rows) == limit else None
-    return {"data": rows, "next_cursor": next_cursor}
+
+    payload = {
+        "data": [
+            {
+                "id": str(r.id),
+                "device_id": r.device_id,
+                "source": r.source,
+                "metric_name": r.metric_name,
+                "value": r.value,
+                "unit": r.unit,
+                "recorded_at": r.recorded_at.isoformat(),
+            }
+            for r in rows
+        ],
+        "next_cursor": next_cursor,
+    }
+    redis.set(cache_key, json.dumps(payload), ex=30)
+    return payload
