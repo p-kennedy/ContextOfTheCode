@@ -4,7 +4,8 @@ import { fetchLive, fmtDateTime } from '../lib/api'
 const AGGREGATOR_BASE = 'http://200.69.13.70:5008'
 const METRICS = ['cpu_percent', 'ram_usage_percent', 'process_count', 'thread_count']
 const REFRESH_MS = 5000
-const INTERVAL_PRESETS = [15, 30, 60, 600]
+const PC_INTERVAL_PRESETS = [15, 30, 60, 600]
+const FN_INTERVAL_PRESETS = [300, 600, 1800, 3600]
 const MAX_LOG_ENTRIES = 10
 
 const METRIC_LABELS = {
@@ -26,6 +27,12 @@ function valueColor(metricName, value) {
   if (value < 50) return 'text-emerald-600'
   if (value < 80) return 'text-amber-500'
   return 'text-red-500'
+}
+
+function fmtPreset(s) {
+  if (s >= 3600) return `${s / 3600}h`
+  if (s >= 60) return `${s / 60}m`
+  return `${s}s`
 }
 
 function MetricCard({ metricName, entry }) {
@@ -50,6 +57,25 @@ function MetricCard({ metricName, entry }) {
   )
 }
 
+function IntervalRow({ label, presets, hoverColor, onSend }) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1.5">{label}</p>
+      <div className="flex gap-2 flex-wrap">
+        {presets.map(s => (
+          <button
+            key={s}
+            onClick={() => onSend(s)}
+            className={`px-3 py-1.5 text-xs font-medium bg-slate-100 ${hoverColor} text-slate-700 rounded-lg transition-colors`}
+          >
+            {fmtPreset(s)}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function DeviceCard({ deviceId, metricMap, onCommand }) {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
@@ -63,21 +89,14 @@ function DeviceCard({ deviceId, metricMap, onCommand }) {
         ))}
       </div>
 
-      {/* Per-device interval presets */}
-      <div className="border-t border-slate-100 pt-4">
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
-          Set Interval
-        </p>
-        <div className="flex gap-2 flex-wrap">
-          {INTERVAL_PRESETS.map(s => (
-            <button
-              key={s}
-              onClick={() => onCommand(deviceId, 'set_interval', String(s))}
-              className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-700 rounded-lg transition-colors"
-            >
-              {s >= 60 ? `${s / 60}m` : `${s}s`}
-            </button>
-          ))}
+      <div className="border-t border-slate-100 pt-4 flex flex-col gap-3">
+        <IntervalRow
+          label="PC Collector"
+          presets={PC_INTERVAL_PRESETS}
+          hoverColor="hover:bg-blue-600 hover:text-white"
+          onSend={s => onCommand(deviceId, 'set_interval', String(s))}
+        />
+        <div>
           <button
             onClick={() => onCommand(deviceId, 'ping')}
             className="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition-colors"
@@ -185,7 +204,7 @@ export default function LiveView() {
         </div>
       )}
 
-      {/* Device cards with per-device interval controls */}
+      {/* Device cards */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
         {devices.map(deviceId => (
           <DeviceCard
@@ -197,29 +216,53 @@ export default function LiveView() {
         ))}
       </div>
 
-      {/* Device Control — broadcast panel */}
+      {/* Device Control panel */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
-        <h2 className="text-base font-semibold text-slate-800 mb-4">Device Control</h2>
+        <h2 className="text-base font-semibold text-slate-800 mb-5">Device Control</h2>
 
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
-          Broadcast to All Devices
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {INTERVAL_PRESETS.map(s => (
-            <button
-              key={s}
-              onClick={() => sendCommand('all', 'set_interval', String(s))}
-              className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-700 rounded-lg transition-colors"
-            >
-              {s >= 60 ? `${s / 60}m` : `${s}s`}
-            </button>
-          ))}
-          <button
-            onClick={() => sendCommand('all', 'ping')}
-            className="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition-colors"
-          >
-            Ping All
-          </button>
+        <div className="flex flex-col gap-5">
+          {/* Broadcast PC */}
+          <div>
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
+              Broadcast PC Collector
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {PC_INTERVAL_PRESETS.map(s => (
+                <button
+                  key={s}
+                  onClick={() => sendCommand('all', 'set_interval', String(s))}
+                  className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-700 rounded-lg transition-colors"
+                >
+                  {fmtPreset(s)}
+                </button>
+              ))}
+              <button
+                onClick={() => sendCommand('all', 'ping')}
+                className="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition-colors"
+              >
+                Ping All
+              </button>
+            </div>
+          </div>
+
+          {/* Broadcast Fortnite */}
+          <div>
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
+              Broadcast Fortnite Poller
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {FN_INTERVAL_PRESETS.map(s => (
+                <button
+                  key={s}
+                  onClick={() => sendCommand('fortnite-island', 'set_interval', String(s))}
+                  className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-purple-600 hover:text-white text-slate-700 rounded-lg transition-colors"
+                >
+                  {fmtPreset(s)}
+                </button>
+              ))}
+            </div>
+          </div>
+
         </div>
       </div>
 

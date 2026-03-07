@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 router = APIRouter(prefix="/commands", tags=["commands"])
 
-_PUBSUB_HOST = os.getenv("REDIS_PUBSUB_HOST", "redis-pubsub")
+_PUBSUB_HOST = os.getenv("REDIS_PUBSUB_HOST", "redis")
 _PUBSUB_PORT = int(os.getenv("REDIS_PUBSUB_PORT", "6379"))
 
 _redis = redis.Redis(host=_PUBSUB_HOST, port=_PUBSUB_PORT, decode_responses=True)

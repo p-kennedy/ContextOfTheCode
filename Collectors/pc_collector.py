@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import platform
+import threading
 import time
 from datetime import datetime, timezone
 
@@ -15,12 +16,15 @@ logger = get_logger(__name__)
 
 DEVICE_ID = platform.node()
 
+_restart = threading.Event()
+
 
 def _handle_set_interval(value: str) -> None:
     try:
         seconds = int(value)
         config.PC_COLLECT_INTERVAL_SECONDS = seconds
         logger.info("Interval updated to %ds", seconds)
+        _restart.set()
     except ValueError:
         logger.warning("set_interval: invalid value %r", value)
 
@@ -77,7 +81,7 @@ def queue_metrics(metrics: list[dict]) -> None:
 
 def main() -> None:
     command_listener.register_handler("set_interval", _handle_set_interval)
-    command_listener.start()
+    command_listener.start(device_id=platform.node())
 
     logger.info(
         "PC collector started (device_id=%s, interval=%ss)",
@@ -87,7 +91,11 @@ def main() -> None:
         logger.info("Collecting metrics...")
         metrics = collect_metrics()
         queue_metrics(metrics)
-        time.sleep(config.PC_COLLECT_INTERVAL_SECONDS)
+        _restart.clear()
+        elapsed = 0
+        while elapsed < config.PC_COLLECT_INTERVAL_SECONDS and not _restart.is_set():
+            time.sleep(1)
+            elapsed += 1
 
 
 if __name__ == "__main__":

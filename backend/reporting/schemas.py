@@ -23,3 +23,8 @@ class MetricSummary(BaseModel):
     average: float
     min_value: float
     max_value: float
+
+
+class MetricHistoryPage(BaseModel):
+    data: list[MetricEventRead]
+    next_cursor: str | None

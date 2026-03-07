@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 import time
 from datetime import datetime
 
@@ -14,7 +15,8 @@ logger = get_logger(__name__)
 
 ISLAND_CODE = config.FORTNITE_ISLAND_CODE
 BASE_URL = f"https://api.fortnite.com/ecosystem/v1/islands/{ISLAND_CODE}/metrics/minute"
-DEVICE_ID = "fortnite-island"
+
+_restart = threading.Event()
 
 METRICS = {
     "peak-ccu": "peak_ccu",
@@ -22,11 +24,20 @@ METRICS = {
 }
 
 
+def _handle_set_island(value: str) -> None:
+    global ISLAND_CODE, BASE_URL
+    config.FORTNITE_ISLAND_CODE = value
+    ISLAND_CODE = value
+    BASE_URL = f"https://api.fortnite.com/ecosystem/v1/islands/{ISLAND_CODE}/metrics/minute"
+    logger.info("Island switched to %s", value)
+
+
 def _handle_set_interval(value: str) -> None:
     try:
         seconds = int(value)
         config.FORTNITE_POLL_INTERVAL_SECONDS = seconds
         logger.info("Fortnite poll interval updated to %ds", seconds)
+        _restart.set()
     except ValueError:
         logger.warning("set_interval: invalid value %r", value)
 
@@ -36,7 +47,7 @@ def get_last_recorded_at(metric_name: str) -> datetime | None:
     try:
         resp = requests.get(
             f"{config.REPORTING_URL}/metrics/history",
-            params={"source": "fortnite", "metric_name": metric_name, "limit": 1},
+            params={"source": "fortnite", "metric_name": metric_name, "device_id": ISLAND_CODE, "limit": 1},
             timeout=5,
         )
         resp.raise_for_status()
@@ -81,7 +92,7 @@ def poll_and_queue() -> None:
                     continue
 
                 payload = {
-                    "device_id": DEVICE_ID,
+                    "device_id": ISLAND_CODE,
                     "source": "fortnite",
                     "metric_name": metric_name,
                     "value": float(value),
@@ -97,8 +108,9 @@ def poll_and_queue() -> None:
 
 
 def main() -> None:
+    command_listener.register_handler("set_island", _handle_set_island)
     command_listener.register_handler("set_interval", _handle_set_interval)
-    command_listener.start()
+    command_listener.start(device_id="fortnite-island")
 
     logger.info(
         "Fortnite poller started (island=%s, interval=%ss)",
@@ -107,7 +119,11 @@ def main() -> None:
     while True:
         logger.info("Polling Fortnite metrics...")
         poll_and_queue()
-        time.sleep(config.FORTNITE_POLL_INTERVAL_SECONDS)
+        _restart.clear()
+        elapsed = 0
+        while elapsed < config.FORTNITE_POLL_INTERVAL_SECONDS and not _restart.is_set():
+            time.sleep(1)
+            elapsed += 1
 
 
 if __name__ == "__main__":
