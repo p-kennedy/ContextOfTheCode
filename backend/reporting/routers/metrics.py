@@ -1,5 +1,6 @@
 import datetime as dt
 import json
+import logging
 
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import func, select
@@ -8,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_session
 from models import MetricEvent
 from schemas import MetricEventRead, MetricHistoryPage, MetricSummary
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/metrics", tags=["metrics"])
 
@@ -121,7 +124,9 @@ async def history_metrics(
     redis = request.app.state.redis
     cached = redis.get(cache_key)
     if cached:
+        logger.info("Cache HIT: %s", cache_key)
         return json.loads(cached)
+    logger.info("Cache MISS: %s", cache_key)
 
     cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(minutes=5)
     query = (
