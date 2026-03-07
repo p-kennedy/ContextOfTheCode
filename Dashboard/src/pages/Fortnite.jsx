@@ -65,8 +65,10 @@ function ChartTooltip({ active, payload, label }) {
 export default function Fortnite() {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState(null)
   const [loadedCount, setLoadedCount] = useState(null)
+  const [nextCursor, setNextCursor] = useState(null)
 
   // Quick range
   const [activeQuick, setActiveQuick] = useState(null)
@@ -91,7 +93,7 @@ export default function Fortnite() {
   const devicePollRef = useRef(null)
 
   function buildParams() {
-    const params = { source: 'fortnite', limit: 1000 }
+    const params = { source: 'fortnite' }
     if (selectedIslandFilter !== 'all') params.device_id = selectedIslandFilter
     if (activeQuick) {
       const range = QUICK_RANGES.find(r => r.key === activeQuick)
@@ -107,10 +109,12 @@ export default function Fortnite() {
   async function load(overrideParams) {
     setLoading(true)
     setError(null)
+    setNextCursor(null)
     try {
-      const rows = await fetchHistory(overrideParams ?? buildParams())
+      const { data: rows, next_cursor } = await fetchHistory(overrideParams ?? buildParams())
       setData(pivotByTime(rows, METRICS))
       setLoadedCount(rows.length)
+      setNextCursor(next_cursor)
     } catch (e) {
       setError(e.message)
     } finally {
@@ -118,7 +122,22 @@ export default function Fortnite() {
     }
   }
 
-  useEffect(() => { load({ source: 'fortnite', limit: 1000 }) }, [])
+  async function loadMore() {
+    setLoadingMore(true)
+    try {
+      const { data: rows, next_cursor } = await fetchHistory({ ...buildParams(), cursor: nextCursor })
+      const newPivoted = pivotByTime(rows, METRICS)
+      setData(prev => [...prev, ...newPivoted].sort((a, b) => new Date(a.recorded_at) - new Date(b.recorded_at)))
+      setLoadedCount(prev => prev + rows.length)
+      setNextCursor(next_cursor)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
+  useEffect(() => { load({ source: 'fortnite' }) }, [])
 
   function handleQuickClick(key) {
     setActiveQuick(key)
@@ -126,7 +145,7 @@ export default function Fortnite() {
     const range = QUICK_RANGES.find(r => r.key === key)
     const sinceISO = new Date(Date.now() - range.ms).toISOString()
     const untilISO = new Date().toISOString()
-    const params = { source: 'fortnite', limit: 1000, since: sinceISO, until: untilISO }
+    const params = { source: 'fortnite', since: sinceISO, until: untilISO }
     if (selectedIslandFilter !== 'all') params.device_id = selectedIslandFilter
     load(params)
   }
@@ -359,11 +378,6 @@ export default function Fortnite() {
             >
               {loading ? 'Loading…' : 'Load'}
             </button>
-            {loadedCount != null && (
-              <span className="text-xs text-slate-400 self-end pb-2">
-                {loadedCount} rows loaded
-              </span>
-            )}
           </div>
         )}
       </div>
@@ -416,7 +430,7 @@ export default function Fortnite() {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-base font-semibold text-slate-800">Player Activity Over Time</h2>
-          {loadedCount != null && !showCustom && (
+          {loadedCount != null && (
             <span className="text-xs text-slate-400">{loadedCount.toLocaleString()} rows</span>
           )}
         </div>
@@ -463,9 +477,15 @@ export default function Fortnite() {
           </ResponsiveContainer>
         )}
 
-        {loadedCount === 1000 && (
-          <div className="mt-4 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-xs">
-            Data may be truncated — try a shorter time range.
+        {nextCursor && (
+          <div className="mt-4 flex justify-center">
+            <button
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="px-5 py-2 text-sm font-medium bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 rounded-lg transition-colors"
+            >
+              {loadingMore ? 'Loading…' : 'Load More'}
+            </button>
           </div>
         )}
       </div>

@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_session
 from models import MetricEvent
-from schemas import MetricEventRead, MetricSummary
+from schemas import MetricEventRead, MetricHistoryPage, MetricSummary
 
 router = APIRouter(prefix="/metrics", tags=["metrics"])
 
@@ -104,15 +104,15 @@ async def list_devices(
     return result.scalars().all()
 
 
-@router.get("/history", response_model=list[MetricEventRead])
+@router.get("/history", response_model=MetricHistoryPage)
 async def history_metrics(
     metric_name: str | None = None,
     source: str | None = None,
     device_id: str | None = None,
     since: dt.datetime | None = None,
     until: dt.datetime | None = None,
-    limit: int = Query(default=100, le=1000),
-    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=500, le=1000),
+    cursor: dt.datetime | None = None,
     session: AsyncSession = Depends(get_session),
 ):
     cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(minutes=5)
@@ -121,6 +121,8 @@ async def history_metrics(
         .where(MetricEvent.recorded_at < cutoff)
         .order_by(MetricEvent.recorded_at.desc())
     )
+    if cursor:
+        query = query.where(MetricEvent.recorded_at < cursor)
     if metric_name:
         query = query.where(MetricEvent.metric_name == metric_name)
     if source:
@@ -131,6 +133,8 @@ async def history_metrics(
         query = query.where(MetricEvent.recorded_at >= since)
     if until:
         query = query.where(MetricEvent.recorded_at <= until)
-    query = query.offset(offset).limit(limit)
+    query = query.limit(limit)
     result = await session.execute(query)
-    return result.scalars().all()
+    rows = result.scalars().all()
+    next_cursor = rows[-1].recorded_at.isoformat() if len(rows) == limit else None
+    return {"data": rows, "next_cursor": next_cursor}

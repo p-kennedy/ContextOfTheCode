@@ -48,8 +48,10 @@ async function fetchDeviceIds() {
 export default function HistoricCharts() {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState(null)
   const [loadedCount, setLoadedCount] = useState(null)
+  const [nextCursor, setNextCursor] = useState(null)
 
   // Quick range selection
   const [activeQuick, setActiveQuick] = useState(null)
@@ -83,7 +85,7 @@ export default function HistoricCharts() {
 
   /** Build since/until params for the history fetch */
   function buildParams() {
-    const params = { source: 'pc', limit: 1000 }
+    const params = { source: 'pc' }
     if (selectedDevice !== 'all') params.device_id = selectedDevice
 
     if (activeQuick) {
@@ -100,11 +102,12 @@ export default function HistoricCharts() {
   async function load(overrideParams) {
     setLoading(true)
     setError(null)
+    setNextCursor(null)
     try {
-      const params = overrideParams ?? buildParams()
-      const rows = await fetchHistory(params)
+      const { data: rows, next_cursor } = await fetchHistory(overrideParams ?? buildParams())
       setData(pivotByTime(rows, METRICS))
       setLoadedCount(rows.length)
+      setNextCursor(next_cursor)
     } catch (e) {
       setError(e.message)
     } finally {
@@ -112,8 +115,23 @@ export default function HistoricCharts() {
     }
   }
 
+  async function loadMore() {
+    setLoadingMore(true)
+    try {
+      const { data: rows, next_cursor } = await fetchHistory({ ...buildParams(), cursor: nextCursor })
+      const newPivoted = pivotByTime(rows, METRICS)
+      setData(prev => [...prev, ...newPivoted].sort((a, b) => new Date(a.recorded_at) - new Date(b.recorded_at)))
+      setLoadedCount(prev => prev + rows.length)
+      setNextCursor(next_cursor)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
   // Initial load (no quick range — use all available data)
-  useEffect(() => { load({ source: 'pc', limit: 1000 }) }, [])
+  useEffect(() => { load({ source: 'pc' }) }, [])
 
   function handleQuickClick(key) {
     setActiveQuick(key)
@@ -121,7 +139,7 @@ export default function HistoricCharts() {
     const range = QUICK_RANGES.find(r => r.key === key)
     const since = new Date(Date.now() - range.ms).toISOString()
     const until = new Date().toISOString()
-    const params = { source: 'pc', limit: 1000, since, until }
+    const params = { source: 'pc', since, until }
     if (selectedDevice !== 'all') params.device_id = selectedDevice
     load(params)
   }
@@ -366,10 +384,15 @@ export default function HistoricCharts() {
           </ResponsiveContainer>
         )}
 
-        {/* Truncation warning */}
-        {loadedCount === 1000 && (
-          <div className="mt-4 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-xs">
-            Data may be truncated — try a shorter time range.
+        {nextCursor && (
+          <div className="mt-4 flex justify-center">
+            <button
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="px-5 py-2 text-sm font-medium bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 rounded-lg transition-colors"
+            >
+              {loadingMore ? 'Loading…' : 'Load More'}
+            </button>
           </div>
         )}
       </div>
