@@ -13,7 +13,11 @@ REDIS_PUBSUB_PORT: int = int(os.getenv("REDIS_PUBSUB_PORT", "5010"))
 
 FORTNITE_ISLAND_CODE: str = os.getenv("FORTNITE_ISLAND_CODE", "3225-0366-8885")
 
+SUPABASE_URL: str = os.getenv("SUPABASE_URL", "https://yaykhzgsoozcdfbbyqvk.supabase.co")
+SUPABASE_ANON_KEY: str = os.getenv("SUPABASE_ANON_KEY", "sb_publishable_2fHFqrakFprEx2oiTbWXKw_MrWQRVfB")
+
 # Mutable at runtime — command_listener updates these in place via the module dict
 PC_COLLECT_INTERVAL_SECONDS: int = int(os.getenv("PC_COLLECT_INTERVAL_SECONDS", "30"))
 FORTNITE_POLL_INTERVAL_SECONDS: int = int(os.getenv("FORTNITE_POLL_INTERVAL_SECONDS", "600"))
+SUPABASE_COLLECT_INTERVAL_SECONDS: int = int(os.getenv("SUPABASE_COLLECT_INTERVAL_SECONDS", "300"))
 UPLOAD_INTERVAL_SECONDS: int = int(os.getenv("UPLOAD_INTERVAL_SECONDS", "30"))
