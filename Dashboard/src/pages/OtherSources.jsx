@@ -8,7 +8,6 @@ import {
 } from 'recharts'
 import { API_BASE, fmtDateTime } from '../lib/api'
 
-const AGGREGATOR = 'http://200.69.13.70:5008'
 const KNOWN_SOURCES = new Set(['pc', 'android', 'fortnite'])
 
 const QUICK_RANGES = [
@@ -18,14 +17,7 @@ const QUICK_RANGES = [
 ]
 
 const CHART_TYPES = ['Line', 'Bar', 'Area']
-const INTERVAL_PRESETS = [10, 30, 60, 300]
 const CHART_COLOR = '#6366f1'
-
-function fmtPreset(s) {
-  if (s >= 3600) return `${s / 3600}h`
-  if (s >= 60) return `${s / 60}m`
-  return `${s}s`
-}
 
 function ChartTooltip({ active, payload, label, metricName }) {
   if (!active || !payload?.length) return null
@@ -62,10 +54,6 @@ export default function OtherSources() {
   const [since, setSince] = useState('')
   const [until, setUntil] = useState('')
   const [showCustom, setShowCustom] = useState(false)
-
-  // Interval command feedback
-  const [intervalStatus, setIntervalStatus] = useState(null)
-  const [intervalReceivers, setIntervalReceivers] = useState(null)
 
   const sourcePollRef = useRef(null)
 
@@ -227,32 +215,6 @@ export default function OtherSources() {
   function handleCustomLoad() {
     setActiveQuick(null)
     load(selectedSource, selectedMetric)
-  }
-
-  // ── Interval command ───────────────────────────────────────
-
-  async function sendIntervalCommand(seconds) {
-    setIntervalStatus('sending')
-    setIntervalReceivers(null)
-    try {
-      const res = await fetch(`${AGGREGATOR}/commands/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ device_id: 'other-sources', command: 'set_interval', value: String(seconds) }),
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const json = await res.json()
-      if (json.receivers === 0) {
-        setIntervalStatus('no-listeners')
-      } else {
-        setIntervalReceivers(json.receivers)
-        setIntervalStatus('ok')
-      }
-    } catch {
-      setIntervalStatus('error')
-    } finally {
-      setTimeout(() => setIntervalStatus(null), 5000)
-    }
   }
 
   // ── Chart rendering ────────────────────────────────────────
@@ -497,43 +459,6 @@ export default function OtherSources() {
             </button>
           </div>
         )}
-      </div>
-
-      {/* Poll interval control */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-6">
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
-          Collect Interval — Other Sources
-        </p>
-        <div className="flex flex-wrap gap-2 items-center">
-          {INTERVAL_PRESETS.map(s => (
-            <button
-              key={s}
-              onClick={() => sendIntervalCommand(s)}
-              disabled={intervalStatus === 'sending'}
-              className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-indigo-600 hover:text-white text-slate-700 rounded-lg transition-colors disabled:opacity-50"
-            >
-              {fmtPreset(s)}
-            </button>
-          ))}
-          {intervalStatus === 'ok' && (
-            <span className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-              Command received by {intervalReceivers} collector{intervalReceivers !== 1 ? 's' : ''}
-            </span>
-          )}
-          {intervalStatus === 'no-listeners' && (
-            <span className="flex items-center gap-1.5 text-xs text-amber-600 font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
-              Command sent but no collectors are listening
-            </span>
-          )}
-          {intervalStatus === 'error' && (
-            <span className="flex items-center gap-1.5 text-xs text-red-500 font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />
-              Failed to send command
-            </span>
-          )}
-        </div>
       </div>
 
       {/* Error */}

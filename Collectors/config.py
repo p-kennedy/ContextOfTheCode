@@ -15,11 +15,16 @@ FORTNITE_ISLAND_CODE: str = os.getenv("FORTNITE_ISLAND_CODE", "3225-0366-8885")
 
 SUPABASE_COLLECTOR_DEVICE_ID: str = "supabase-collector"
 
+WEATHER_LATITUDE: float = 52.6638
+WEATHER_LONGITUDE: float = -8.6267
+WEATHER_DEVICE_ID: str = "limerick-weather"
+
 SUPABASE_URL: str = os.getenv("SUPABASE_URL", "https://yaykhzgsoozcdfbbyqvk.supabase.co")
 SUPABASE_ANON_KEY: str = os.getenv("SUPABASE_ANON_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlheWtoemdzb296Y2RmYmJ5cXZrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTg1NzY4NywiZXhwIjoyMDg3NDMzNjg3fQ.FMLqGGLpXFkSEVz0cNQys3c3iO8TwJt0fwWvgJSiXLE")
 
 # Mutable at runtime — command_listener updates these in place via the module dict
 PC_COLLECT_INTERVAL_SECONDS: int = int(os.getenv("PC_COLLECT_INTERVAL_SECONDS", "30"))
+WEATHER_COLLECT_INTERVAL_SECONDS: int = int(os.getenv("WEATHER_COLLECT_INTERVAL_SECONDS", "600"))
 FORTNITE_POLL_INTERVAL_SECONDS: int = int(os.getenv("FORTNITE_POLL_INTERVAL_SECONDS", "600"))
 SUPABASE_COLLECT_INTERVAL_SECONDS: int = int(os.getenv("SUPABASE_COLLECT_INTERVAL_SECONDS", "20"))
 UPLOAD_INTERVAL_SECONDS: int = int(os.getenv("UPLOAD_INTERVAL_SECONDS", "30"))
