@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 import time
 
 from supabase import create_client, Client
@@ -11,6 +12,8 @@ from uploader_queue import push_metric
 
 logger = get_logger(__name__)
 
+_restart = threading.Event()
+
 COLLECT_DEVICE_ID = config.SUPABASE_COLLECTOR_DEVICE_ID
 
 METRIC_NAMES = {"balance", "bet_amount", "win_rate", "player_total", "dealer_total"}
@@ -21,6 +24,7 @@ def _handle_set_interval(value: str) -> None:
         seconds = int(value)
         config.SUPABASE_COLLECT_INTERVAL_SECONDS = seconds
         logger.info("Supabase collect interval updated to %ds", seconds)
+        _restart.set()
     except ValueError:
         logger.warning("set_interval: invalid value %r", value)
 
@@ -153,7 +157,11 @@ def main() -> None:
             logger.info("Queued %d new row(s) across %d device(s)", len(metrics), len({m["device_id"] for m in metrics}))
         else:
             logger.info("No new rows")
-        time.sleep(config.SUPABASE_COLLECT_INTERVAL_SECONDS)
+        _restart.clear()
+        elapsed = 0
+        while elapsed < config.SUPABASE_COLLECT_INTERVAL_SECONDS and not _restart.is_set():
+            time.sleep(1)
+            elapsed += 1
 
 
 if __name__ == "__main__":
