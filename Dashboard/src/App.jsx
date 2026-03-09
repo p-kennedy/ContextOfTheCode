@@ -4,6 +4,7 @@ import LiveView from './pages/LiveView'
 import HistoricCharts from './pages/HistoricCharts'
 import Fortnite from './pages/Fortnite'
 import Android from './pages/Android'
+import OtherSources from './pages/OtherSources'
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
           <Route path="/historic" element={<HistoricCharts />} />
           <Route path="/fortnite" element={<Fortnite />} />
           <Route path="/android" element={<Android />} />
+          <Route path="/other-sources" element={<OtherSources />} />
         </Routes>
       </main>
     </div>

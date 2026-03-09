@@ -96,6 +96,27 @@ async def live_metrics(
     return result.scalars().all()
 
 
+@router.get("/sources", response_model=list[str])
+async def list_sources(
+    session: AsyncSession = Depends(get_session),
+):
+    query = select(MetricEvent.source).distinct().order_by(MetricEvent.source)
+    result = await session.execute(query)
+    return result.scalars().all()
+
+
+@router.get("/metric-names", response_model=list[str])
+async def list_metric_names(
+    source: str | None = None,
+    session: AsyncSession = Depends(get_session),
+):
+    query = select(MetricEvent.metric_name).distinct().order_by(MetricEvent.metric_name)
+    if source:
+        query = query.where(MetricEvent.source == source)
+    result = await session.execute(query)
+    return result.scalars().all()
+
+
 @router.get("/devices", response_model=list[str])
 async def list_devices(
     source: str | None = None,
