@@ -168,12 +168,11 @@ export default function Android() {
   async function sendIntervalCommand(seconds) {
     setIntervalStatus('sending')
     setIntervalReceivers(null)
-    const target = selectedDevice === 'all' ? 'all' : selectedDevice
     try {
       const res = await fetch(`${AGGREGATOR}/commands/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ device_id: target, command: 'set_interval', value: String(seconds) }),
+        body: JSON.stringify({ device_id: 'supabase-database', command: 'set_interval', value: String(seconds) }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
