@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 class MetricEventCreate(BaseModel):
     device_id: str
-    source: Literal["pc", "android", "fortnite"]
+    source: str
     metric_name: str
     value: float
     unit: str | None = None
