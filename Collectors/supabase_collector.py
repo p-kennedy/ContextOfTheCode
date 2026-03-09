@@ -11,7 +11,7 @@ from uploader_queue import push_metric
 
 logger = get_logger(__name__)
 
-COLLECT_DEVICE_ID = "supabase-collector"
+COLLECT_DEVICE_ID = config.SUPABASE_COLLECTOR_DEVICE_ID
 
 METRIC_NAMES = {"balance", "bet_amount", "win_rate", "player_total", "dealer_total"}
 

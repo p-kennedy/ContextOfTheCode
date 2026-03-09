@@ -13,6 +13,8 @@ REDIS_PUBSUB_PORT: int = int(os.getenv("REDIS_PUBSUB_PORT", "5010"))
 
 FORTNITE_ISLAND_CODE: str = os.getenv("FORTNITE_ISLAND_CODE", "3225-0366-8885")
 
+SUPABASE_COLLECTOR_DEVICE_ID: str = "supabase-collector"
+
 SUPABASE_URL: str = os.getenv("SUPABASE_URL", "https://yaykhzgsoozcdfbbyqvk.supabase.co")
 SUPABASE_ANON_KEY: str = os.getenv("SUPABASE_ANON_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlheWtoemdzb296Y2RmYmJ5cXZrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTg1NzY4NywiZXhwIjoyMDg3NDMzNjg3fQ.FMLqGGLpXFkSEVz0cNQys3c3iO8TwJt0fwWvgJSiXLE")
 

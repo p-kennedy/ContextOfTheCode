@@ -4,6 +4,7 @@ import {
   Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import { API_BASE, fetchHistory, pivotByTime, fmtDateTime } from '../lib/api'
+import { SUPABASE_COLLECTOR_DEVICE_ID } from '../config'
 
 const AGGREGATOR = 'http://200.69.13.70:5008'
 
@@ -172,7 +173,7 @@ export default function Android() {
       const res = await fetch(`${AGGREGATOR}/commands/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ device_id: 'supabase-database', command: 'set_interval', value: String(seconds) }),
+        body: JSON.stringify({ device_id: SUPABASE_COLLECTOR_DEVICE_ID, command: 'set_interval', value: String(seconds) }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
