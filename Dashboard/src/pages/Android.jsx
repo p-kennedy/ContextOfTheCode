@@ -3,9 +3,20 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
-import { API_BASE, AGGREGATOR_BASE, fetchHistory, pivotByTime, fmtDateTime } from '../lib/api'
+import { API_BASE, fetchHistory, pivotByTime, fmtDateTime } from '../lib/api'
 
 const AGGREGATOR = 'http://200.69.13.70:5008'
+
+const DEVICE_NAMES = {
+  'afd7bb7d-4e6f-44c1-87fd-aa6a07215827': "Matthew's PC Emulator",
+  '8c80813c-fb15-4b46-8337-af62c0a101d5': "Matthew's Laptop Emulator",
+}
+
+function deviceLabel(id, allIds) {
+  if (DEVICE_NAMES[id]) return DEVICE_NAMES[id]
+  const n = allIds.indexOf(id) + 1
+  return `Phone ${n}`
+}
 
 const QUICK_RANGES = [
   { key: 'hour', label: 'Last Hour', ms: 60 * 60 * 1000 },
@@ -181,7 +192,7 @@ export default function Android() {
 
   const intervalLabel = selectedDevice === 'all'
     ? 'Collect Interval — All Devices'
-    : `Collect Interval — ${selectedDevice}`
+    : `Collect Interval — ${deviceLabel(selectedDevice, devices)}`
 
   const tickFormatter = (iso) => {
     if (!iso) return ''
@@ -234,7 +245,7 @@ export default function Android() {
             >
               <option value="all">All Devices</option>
               {devices.map(id => (
-                <option key={id} value={id}>{id}</option>
+                <option key={id} value={id}>{deviceLabel(id, devices)}</option>
               ))}
             </select>
           </div>
