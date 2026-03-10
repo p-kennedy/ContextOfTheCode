@@ -14,6 +14,7 @@ const QUICK_RANGES = [
   { key: 'hour', label: 'Last Hour', ms: 60 * 60 * 1000 },
   { key: 'day',  label: 'Last Day',  ms: 24 * 60 * 60 * 1000 },
   { key: 'week', label: 'Last Week', ms: 7 * 24 * 60 * 60 * 1000 },
+  { key: 'all',  label: 'All Time',  ms: null },
 ]
 
 const CHART_TYPES = ['Line', 'Bar', 'Area']
@@ -202,12 +203,12 @@ export default function OtherSources() {
     setActiveQuick(key)
     setShowCustom(false)
     const range = QUICK_RANGES.find(r => r.key === key)
-    const sinceISO = new Date(Date.now() - range.ms).toISOString()
-    const untilISO = new Date().toISOString()
-    load(selectedSource, selectedMetric, {
-      source: selectedSource, metric_name: selectedMetric,
-      since: sinceISO, until: untilISO,
-    })
+    const overrides = { source: selectedSource, metric_name: selectedMetric }
+    if (range.ms !== null) {
+      overrides.since = new Date(Date.now() - range.ms).toISOString()
+      overrides.until = new Date().toISOString()
+    }
+    load(selectedSource, selectedMetric, overrides)
   }
 
   function handleCustomLoad() {

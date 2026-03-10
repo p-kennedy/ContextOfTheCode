@@ -19,6 +19,7 @@ const QUICK_RANGES = [
   { key: 'hour', label: 'Last Hour', ms: 60 * 60 * 1000 },
   { key: 'day',  label: 'Last Day',  ms: 24 * 60 * 60 * 1000 },
   { key: 'week', label: 'Last Week', ms: 7 * 24 * 60 * 60 * 1000 },
+  { key: 'all',  label: 'All Time',  ms: null },
 ]
 
 const FN_INTERVAL_PRESETS = [300, 600, 1800, 3600]
@@ -143,10 +144,12 @@ export default function Fortnite() {
     setActiveQuick(key)
     setShowCustom(false)
     const range = QUICK_RANGES.find(r => r.key === key)
-    const sinceISO = new Date(Date.now() - range.ms).toISOString()
-    const untilISO = new Date().toISOString()
-    const params = { source: 'fortnite', since: sinceISO, until: untilISO }
+    const params = { source: 'fortnite' }
     if (selectedIslandFilter !== 'all') params.device_id = selectedIslandFilter
+    if (range.ms !== null) {
+      params.since = new Date(Date.now() - range.ms).toISOString()
+      params.until = new Date().toISOString()
+    }
     load(params)
   }
 
