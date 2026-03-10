@@ -1,14 +1,18 @@
 # ContextOfTheCode
 Project repo for Context of the Code module.
 
-## Current collector shape
+## Metric contract
 
-The project now uses one shared collector contract in `Collectors/contracts.py`:
+All collectors emit a flat dict with the following fields:
 
-- `Collector.collect() -> MetricRecord`
-- `MetricRecord` envelope: `source`, `metric_type`, `captured_at`, `payload`
-
-This keeps the pipeline source-agnostic because all collectors emit the same envelope, regardless of how data is gathered.
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `device_id` | string | yes | Unique identifier for the device |
+| `source` | string | yes | Any string identifying the data source (e.g. `"pc"`, `"android"`, `"fortnite"`) |
+| `metric_name` | string | yes | e.g. `"cpu_usage"`, `"battery_level"` |
+| `value` | float | yes | The metric value |
+| `unit` | string | no | e.g. `"percent"`, `"celsius"` |
+| `recorded_at` | ISO 8601 datetime | no | Defaults to server time if omitted |
 
 ## PC metrics
 
@@ -20,15 +24,6 @@ This keeps the pipeline source-agnostic because all collectors emit the same env
 - Thread count
 
 Dependency: `pip install psutil`
-
-## JSON conversion recommendation
-
-Convert to JSON at the uploader boundary, not inside collectors.
-
-- Collectors should return typed `MetricRecord` objects.
-- `Uploader/uploader_queue.py` serializes with `get_json()` / `serialize()`.
-
-This keeps collection and transport concerns separated and makes collector interchangeability straightforward.
 
 ## Backend API (Android integration guide)
 
@@ -45,7 +40,7 @@ Submit a single metric event.
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | `device_id` | string | yes | Unique identifier for the device |
-| `source` | string | yes | One of `"pc"`, `"android"`, `"fortnite"` |
+| `source` | string | yes | Any string identifying the data source |
 | `metric_name` | string | yes | e.g. `"cpu_usage"`, `"battery_level"` |
 | `value` | float | yes | The metric value |
 | `unit` | string | no | e.g. `"percent"`, `"celsius"` |
@@ -107,8 +102,19 @@ Returns older metrics that fall outside the live window, with full range query s
 | `device_id` | string | no | Filter by device |
 | `since` | ISO 8601 datetime | no | Start of time range |
 | `until` | ISO 8601 datetime | no | End of time range |
-| `limit` | int | no | Max results, default `100`, max `1000` |
-| `offset` | int | no | Pagination offset, default `0` |
+| `limit` | int | no | Max results per page, default `100`, max `1000` |
+| `cursor` | string | no | Opaque cursor for pagination (from `next_cursor` in previous response) |
+
+**Response shape:**
+
+```json
+{
+  "data": [ /* array of metric objects */ ],
+  "next_cursor": "<opaque string or null>"
+}
+```
+
+Pass `next_cursor` back as the `cursor` parameter to fetch the next page. A `null` value means there are no more results.
 
 ### Interactive docs
 
