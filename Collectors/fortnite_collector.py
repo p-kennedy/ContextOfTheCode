@@ -51,7 +51,7 @@ def get_last_recorded_at(metric_name: str) -> datetime | None:
             timeout=5,
         )
         resp.raise_for_status()
-        results = resp.json()
+        results = resp.json().get("data", [])
         if results:
             return datetime.fromisoformat(results[0]["recorded_at"])
     except requests.RequestException as exc:
