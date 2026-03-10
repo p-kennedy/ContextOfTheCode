@@ -238,16 +238,25 @@ export default function Android() {
           {/* Device filter */}
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Filter Device</label>
-            <select
-              value={selectedDevice}
-              onChange={e => setSelectedDevice(e.target.value)}
-              className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">All Devices</option>
-              {devices.map(id => (
-                <option key={id} value={id}>{deviceLabel(id, devices)}</option>
-              ))}
-            </select>
+            <div className="flex gap-2 items-center">
+              <select
+                value={selectedDevice}
+                onChange={e => setSelectedDevice(e.target.value)}
+                className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Devices</option>
+                {devices.map(id => (
+                  <option key={id} value={id}>{deviceLabel(id, devices)}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => load()}
+                disabled={loading}
+                className="px-3 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg transition-colors"
+              >
+                Apply
+              </button>
+            </div>
           </div>
         </div>
 

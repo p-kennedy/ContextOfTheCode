@@ -187,7 +187,6 @@ export default function OtherSources() {
     const names = await fetchMetricNames(src)
     if (names?.length) {
       setSelectedMetric(names[0])
-      load(src, names[0], { source: src, metric_name: names[0] })
     }
   }
 
@@ -195,7 +194,6 @@ export default function OtherSources() {
 
   function handleMetricChange(metric) {
     setSelectedMetric(metric)
-    load(selectedSource, metric)
   }
 
   // ── Quick range ────────────────────────────────────────────
@@ -389,6 +387,16 @@ export default function OtherSources() {
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="flex flex-col justify-end">
+            <button
+              onClick={() => load(selectedSource, selectedMetric)}
+              disabled={loading || !selectedMetric}
+              className="px-3 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg transition-colors"
+            >
+              Apply
+            </button>
           </div>
         </div>
       </div>
