@@ -1,4 +1,5 @@
-export const API_BASE = 'http://200.69.13.70:5009'
+import { REPORTING_API } from '../config'
+export const API_BASE = REPORTING_API
 
 export async function fetchLive(params = {}) {
   const url = new URL(`${API_BASE}/metrics/live`)

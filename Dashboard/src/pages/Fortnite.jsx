@@ -4,8 +4,10 @@ import {
   Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import { API_BASE, fetchHistory, pivotByTime, fmtDateTime } from '../lib/api'
-
-const AGGREGATOR_BASE = 'http://200.69.13.70:5008'
+import {
+  AGGREGATOR_API, QUICK_RANGES, FN_INTERVAL_PRESETS,
+  FORTNITE_COLLECTOR_DEVICE_ID, DEVICE_POLL_INTERVAL_MS, STATUS_DISMISS_MS,
+} from '../config'
 
 const ISLAND_OPTIONS = [
   { code: '3225-0366-8885', name: 'Steal The Brainrot' },
@@ -15,14 +17,6 @@ const ISLAND_OPTIONS = [
   { code: '1832-0431-4852', name: '1v1 Build Fights! [4.6.4]' },
 ]
 
-const QUICK_RANGES = [
-  { key: 'hour', label: 'Last Hour', ms: 60 * 60 * 1000 },
-  { key: 'day',  label: 'Last Day',  ms: 24 * 60 * 60 * 1000 },
-  { key: 'week', label: 'Last Week', ms: 7 * 24 * 60 * 60 * 1000 },
-  { key: 'all',  label: 'All Time',  ms: null },
-]
-
-const FN_INTERVAL_PRESETS = [300, 600, 1800, 3600]
 
 const METRICS = ['peak_ccu', 'unique_players']
 const COLORS = { peak_ccu: '#8b5cf6', unique_players: '#10b981' }
@@ -171,7 +165,7 @@ export default function Fortnite() {
 
   useEffect(() => {
     loadIslandDevices()
-    devicePollRef.current = setInterval(loadIslandDevices, 60_000)
+    devicePollRef.current = setInterval(loadIslandDevices, DEVICE_POLL_INTERVAL_MS)
     return () => clearInterval(devicePollRef.current)
   }, [])
 
@@ -179,10 +173,10 @@ export default function Fortnite() {
     setIntervalStatus('sending')
     setIntervalReceivers(null)
     try {
-      const res = await fetch(`${AGGREGATOR_BASE}/commands/`, {
+      const res = await fetch(`${AGGREGATOR_API}/commands/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ device_id: 'fortnite-island', command: 'set_interval', value: String(seconds) }),
+        body: JSON.stringify({ device_id: FORTNITE_COLLECTOR_DEVICE_ID, command: 'set_interval', value: String(seconds) }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
@@ -195,7 +189,7 @@ export default function Fortnite() {
     } catch {
       setIntervalStatus('error')
     } finally {
-      setTimeout(() => setIntervalStatus(null), 5000)
+      setTimeout(() => setIntervalStatus(null), STATUS_DISMISS_MS)
     }
   }
 
@@ -203,10 +197,10 @@ export default function Fortnite() {
     setIslandStatus('sending')
     setIslandReceivers(null)
     try {
-      const res = await fetch(`${AGGREGATOR_BASE}/commands/`, {
+      const res = await fetch(`${AGGREGATOR_API}/commands/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ device_id: 'fortnite-island', command: 'set_island', value: selectedIsland }),
+        body: JSON.stringify({ device_id: FORTNITE_COLLECTOR_DEVICE_ID, command: 'set_island', value: selectedIsland }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
@@ -219,7 +213,7 @@ export default function Fortnite() {
     } catch {
       setIslandStatus('error')
     } finally {
-      setTimeout(() => setIslandStatus(null), 5000)
+      setTimeout(() => setIslandStatus(null), STATUS_DISMISS_MS)
     }
   }
 

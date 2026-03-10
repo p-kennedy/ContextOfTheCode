@@ -7,15 +7,9 @@ import {
   Tooltip, ResponsiveContainer,
 } from 'recharts'
 import { API_BASE, fmtDateTime } from '../lib/api'
+import { QUICK_RANGES, DEVICE_POLL_INTERVAL_MS } from '../config'
 
 const KNOWN_SOURCES = new Set(['pc', 'android', 'fortnite'])
-
-const QUICK_RANGES = [
-  { key: 'hour', label: 'Last Hour', ms: 60 * 60 * 1000 },
-  { key: 'day',  label: 'Last Day',  ms: 24 * 60 * 60 * 1000 },
-  { key: 'week', label: 'Last Week', ms: 7 * 24 * 60 * 60 * 1000 },
-  { key: 'all',  label: 'All Time',  ms: null },
-]
 
 const CHART_TYPES = ['Line', 'Bar', 'Area']
 const CHART_COLOR = '#6366f1'
@@ -174,7 +168,7 @@ export default function OtherSources() {
       }
     }
     init()
-    sourcePollRef.current = setInterval(fetchSources, 60_000)
+    sourcePollRef.current = setInterval(fetchSources, DEVICE_POLL_INTERVAL_MS)
     return () => clearInterval(sourcePollRef.current)
   }, [])
 

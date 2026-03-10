@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
 import { fetchLive, fmtDateTime } from '../lib/api'
+import { AGGREGATOR_API, FN_INTERVAL_PRESETS, FORTNITE_COLLECTOR_DEVICE_ID } from '../config'
 
-const AGGREGATOR_BASE = 'http://200.69.13.70:5008'
 const METRICS = ['cpu_percent', 'ram_usage_percent', 'process_count', 'thread_count']
 const REFRESH_MS = 5000
 const PC_INTERVAL_PRESETS = [15, 30, 60, 600]
-const FN_INTERVAL_PRESETS = [300, 600, 1800, 3600]
 const MAX_LOG_ENTRIES = 10
 
 const METRIC_LABELS = {
@@ -152,7 +151,7 @@ export default function LiveView() {
     setCommandLog(prev => [entry, ...prev].slice(0, MAX_LOG_ENTRIES))
 
     try {
-      const res = await fetch(`${AGGREGATOR_BASE}/commands/`, {
+      const res = await fetch(`${AGGREGATOR_API}/commands/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ device_id: deviceId, command, value }),
@@ -254,7 +253,7 @@ export default function LiveView() {
               {FN_INTERVAL_PRESETS.map(s => (
                 <button
                   key={s}
-                  onClick={() => sendCommand('fortnite-island', 'set_interval', String(s))}
+                  onClick={() => sendCommand(FORTNITE_COLLECTOR_DEVICE_ID, 'set_interval', String(s))}
                   className="px-3 py-1.5 text-xs font-medium bg-slate-100 hover:bg-purple-600 hover:text-white text-slate-700 rounded-lg transition-colors"
                 >
                   {fmtPreset(s)}

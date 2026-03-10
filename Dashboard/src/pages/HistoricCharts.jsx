@@ -4,20 +4,14 @@ import {
   Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import { API_BASE, fetchHistory, pivotByTime, fmtDateTime } from '../lib/api'
-
-const AGGREGATOR_BASE = 'http://200.69.13.70:5008'
-const PC_INTERVAL_PRESETS = [10, 30, 60, 300]
+import {
+  AGGREGATOR_API, QUICK_RANGES, INTERVAL_PRESETS,
+  DEVICE_POLL_INTERVAL_MS, STATUS_DISMISS_MS,
+} from '../config'
 
 const METRICS = ['ram_usage_percent', 'cpu_percent']
 const COLORS = { ram_usage_percent: '#3b82f6', cpu_percent: '#f59e0b' }
 const LABELS = { ram_usage_percent: 'RAM %', cpu_percent: 'CPU %' }
-
-const QUICK_RANGES = [
-  { key: 'hour', label: 'Last Hour', ms: 60 * 60 * 1000 },
-  { key: 'day',  label: 'Last Day',  ms: 24 * 60 * 60 * 1000 },
-  { key: 'week', label: 'Last Week', ms: 7 * 24 * 60 * 60 * 1000 },
-  { key: 'all',  label: 'All Time',  ms: null },
-]
 
 function fmtPreset(s) {
   if (s >= 3600) return `${s / 3600}h`
@@ -81,7 +75,7 @@ export default function HistoricCharts() {
 
   useEffect(() => {
     loadDeviceIds()
-    devicePollRef.current = setInterval(loadDeviceIds, 60_000)
+    devicePollRef.current = setInterval(loadDeviceIds, DEVICE_POLL_INTERVAL_MS)
     return () => clearInterval(devicePollRef.current)
   }, [])
 
@@ -164,7 +158,7 @@ export default function HistoricCharts() {
     setIntervalReceivers(null)
     const targetDevice = selectedDevice === 'all' ? 'all' : selectedDevice
     try {
-      const res = await fetch(`${AGGREGATOR_BASE}/commands/`, {
+      const res = await fetch(`${AGGREGATOR_API}/commands/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ device_id: targetDevice, command: 'set_interval', value: String(seconds) }),
@@ -180,7 +174,7 @@ export default function HistoricCharts() {
     } catch {
       setIntervalStatus('error')
     } finally {
-      setTimeout(() => setIntervalStatus(null), 5000)
+      setTimeout(() => setIntervalStatus(null), STATUS_DISMISS_MS)
     }
   }
 
@@ -301,7 +295,7 @@ export default function HistoricCharts() {
           Collect Interval{selectedDevice !== 'all' ? ` — ${selectedDevice}` : ' — All Devices'}
         </p>
         <div className="flex flex-wrap gap-2 items-center">
-          {PC_INTERVAL_PRESETS.map(s => (
+          {INTERVAL_PRESETS.map(s => (
             <button
               key={s}
               onClick={() => sendIntervalCommand(s)}

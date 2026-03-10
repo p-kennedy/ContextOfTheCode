@@ -4,9 +4,10 @@ import {
   Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import { API_BASE, fetchHistory, pivotByTime, fmtDateTime } from '../lib/api'
-import { SUPABASE_COLLECTOR_DEVICE_ID } from '../config'
-
-const AGGREGATOR = 'http://200.69.13.70:5008'
+import {
+  SUPABASE_COLLECTOR_DEVICE_ID, AGGREGATOR_API,
+  QUICK_RANGES, INTERVAL_PRESETS, DEVICE_POLL_INTERVAL_MS, STATUS_DISMISS_MS,
+} from '../config'
 
 const DEVICE_NAMES = {
   'afd7bb7d-4e6f-44c1-87fd-aa6a07215827': "Matthew's PC Emulator",
@@ -19,14 +20,6 @@ function deviceLabel(id, allIds) {
   return `Phone ${n}`
 }
 
-const QUICK_RANGES = [
-  { key: 'hour', label: 'Last Hour', ms: 60 * 60 * 1000 },
-  { key: 'day',  label: 'Last Day',  ms: 24 * 60 * 60 * 1000 },
-  { key: 'week', label: 'Last Week', ms: 7 * 24 * 60 * 60 * 1000 },
-  { key: 'all',  label: 'All Time',  ms: null },
-]
-
-const INTERVAL_PRESETS = [10, 30, 60, 300]
 
 const METRICS = ['balance', 'bet_amount', 'win_rate', 'player_total', 'dealer_total']
 const COLORS = {
@@ -167,7 +160,7 @@ export default function Android() {
 
   useEffect(() => {
     loadDevices()
-    devicePollRef.current = setInterval(loadDevices, 60_000)
+    devicePollRef.current = setInterval(loadDevices, DEVICE_POLL_INTERVAL_MS)
     return () => clearInterval(devicePollRef.current)
   }, [])
 
@@ -175,7 +168,7 @@ export default function Android() {
     setIntervalStatus('sending')
     setIntervalReceivers(null)
     try {
-      const res = await fetch(`${AGGREGATOR}/commands/`, {
+      const res = await fetch(`${AGGREGATOR_API}/commands/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ device_id: SUPABASE_COLLECTOR_DEVICE_ID, command: 'set_interval', value: String(seconds) }),
@@ -191,7 +184,7 @@ export default function Android() {
     } catch {
       setIntervalStatus('error')
     } finally {
-      setTimeout(() => setIntervalStatus(null), 5000)
+      setTimeout(() => setIntervalStatus(null), STATUS_DISMISS_MS)
     }
   }
 
