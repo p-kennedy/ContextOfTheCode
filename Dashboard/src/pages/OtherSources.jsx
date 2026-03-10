@@ -93,8 +93,10 @@ export default function OtherSources() {
     const params = { source, metric_name: metric }
     if (activeQuick && !overrides.since) {
       const range = QUICK_RANGES.find(r => r.key === activeQuick)
-      params.since = new Date(Date.now() - range.ms).toISOString()
-      params.until = new Date().toISOString()
+      if (range.ms !== null) {
+        params.since = new Date(Date.now() - range.ms).toISOString()
+        params.until = new Date().toISOString()
+      }
     } else {
       if (since) params.since = since
       if (until) params.until = until + 'T23:59:59'

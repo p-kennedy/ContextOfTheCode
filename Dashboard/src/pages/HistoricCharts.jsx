@@ -92,8 +92,10 @@ export default function HistoricCharts() {
 
     if (activeQuick) {
       const range = QUICK_RANGES.find(r => r.key === activeQuick)
-      params.since = new Date(Date.now() - range.ms).toISOString()
-      params.until = new Date().toISOString()
+      if (range.ms !== null) {
+        params.since = new Date(Date.now() - range.ms).toISOString()
+        params.until = new Date().toISOString()
+      }
     } else {
       if (customSince) params.since = customSince
       if (customUntil) params.until = customUntil + 'T23:59:59'

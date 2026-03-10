@@ -98,8 +98,10 @@ export default function Fortnite() {
     if (selectedIslandFilter !== 'all') params.device_id = selectedIslandFilter
     if (activeQuick) {
       const range = QUICK_RANGES.find(r => r.key === activeQuick)
-      params.since = new Date(Date.now() - range.ms).toISOString()
-      params.until = new Date().toISOString()
+      if (range.ms !== null) {
+        params.since = new Date(Date.now() - range.ms).toISOString()
+        params.until = new Date().toISOString()
+      }
     } else {
       if (since) params.since = since
       if (until) params.until = until + 'T23:59:59'
