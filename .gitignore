@@ -1,7 +1,5 @@
-# env
-.env
-.env.*
-.vercel
+# .env
+backend/.env
 
 # Python bytecode/cache
 __pycache__/
@@ -42,5 +40,4 @@ Thumbs.db
 .DS_Store
 
 # Node
-node_modules/
-dist/
+Dashboard/node_modules/
